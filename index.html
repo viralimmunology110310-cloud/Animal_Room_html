@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>동물실 랙 관리 (Drag & Drop)</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; padding: 50px; }
+        .rack-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(7, 80px); gap: 10px; margin-top: 20px; }
+        
+        /* 빈 자리 (Drop zone) */
+        .cage-slot { 
+            width: 80px; height: 80px; background-color: #e9ecef; border: 2px dashed #ced4da; 
+            border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+            font-size: 12px; color: #6c757d; transition: all 0.2s;
+        }
+        /* 드래그해서 올려놨을 때 하이라이트 */
+        .cage-slot.drag-over { background-color: #d1ecf1; border-color: #17a2b8; }
+        
+        /* 실제 쥐 케이지 (Draggable) */
+        .cage-item { 
+            width: 100%; height: 100%; background-color: #007bff; color: white; 
+            border-radius: 6px; display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; cursor: grab; font-weight: bold; font-size: 14px;
+        }
+        .cage-item.mating { background-color: #e83e8c; }
+        .cage-item:active { cursor: grabbing; opacity: 0.8; transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+<div class="rack-container">
+    <h2>🐁 Rack A (드래그 앤 드롭 테스트)</h2>
+    <p>파란색(Breeding) 케이지를 빈칸으로 마우스로 끌어서 놓아보세요!</p>
+    <div class="grid" id="rack-grid">
+        </div>
+</div>
+
+<script>
+    // ★ 여기에 아까 복사한 구글 웹 앱 URL을 넣으세요! ★
+    const API_URL= "https://script.google.com/macros/s/AKfycbxqUZs3W3HZcM2es6WQ2U9BWXvfsdvLIe_ooU1WzAvNcFivfiuTITY4SxHVs2D3qWfr/exec";
+
+    const grid = document.getElementById('rack-grid');
+    let draggedItem = null;
+
+    // 5행 7열 그리드 그리기
+    for(let r=1; r<=5; r++) {
+        for(let c=1; c<=7; c++) {
+            let slotId = `A_${String.fromCharCode(64+r)}-${c}`;
+            
+            let slot = document.createElement('div');
+            slot.className = 'cage-slot';
+            slot.id = slotId;
+            slot.innerText = slotId.split('_')[1]; // A-1 텍스트 표시
+
+            // 임시 테스트용 데이터 (A-1과 B-3에만 쥐가 있다고 가정)
+            if(slotId === "A_A-1") createCage(slot, slotId, "Breeding", "WT (5)");
+            if(slotId === "A_B-3") createCage(slot, slotId, "Mating", "K18 (💑)");
+
+            // --- 드래그 앤 드롭 이벤트 설정 ---
+            slot.addEventListener('dragover', (e) => {
+                e.preventDefault(); // 드롭 허용
+                slot.classList.add('drag-over');
+            });
+            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+            
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                
+                // 케이지 이동 로직
+                if (draggedItem) {
+                    slot.innerHTML = ''; // 기존 텍스트 지우고
+                    slot.appendChild(draggedItem); // 마우스가 놓인 곳에 쥐를 쏙 넣음
+                    
+                    // 구글 시트로 이동 내역 전송 (비동기 처리라 화면 멈춤 없음)
+                    saveToGoogleSheet(draggedItem.id, slot.id);
+                }
+            });
+
+            grid.appendChild(slot);
+        }
+    }
+
+    // 쥐 케이지(요소) 생성 함수
+    function createCage(parentSlot, id, type, text) {
+        let cage = document.createElement('div');
+        cage.className = `cage-item ${type === 'Mating' ? 'mating' : ''}`;
+        cage.draggable = true;
+        cage.id = `cage_${id}`;
+        cage.innerText = text;
+
+        cage.addEventListener('dragstart', function() {
+            draggedItem = this;
+            setTimeout(() => this.style.display = 'none', 0); // 드래그 중인 원본 숨기기
+        });
+
+        cage.addEventListener('dragend', function() {
+            setTimeout(() => {
+                draggedItem.style.display = 'flex';
+                draggedItem = null;
+            }, 0);
+        });
+
+        parentSlot.innerHTML = '';
+        parentSlot.appendChild(cage);
+    }
+
+    // 구글 시트에 변경사항 전송 함수
+    function saveToGoogleSheet(sourceId, targetId) {
+        console.log(`이동 발생: ${sourceId} -> ${targetId}`);
+        // 백그라운드에서 구글에 데이터 전송 (화면 렉 전혀 없음)
+        fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ source: sourceId, target: targetId })
+        }).then(response => console.log("구글 시트 동기화 완료!"))
+          .catch(err => console.error("오류:", err));
+    }
+</script>
+
+</body>
+</html>
