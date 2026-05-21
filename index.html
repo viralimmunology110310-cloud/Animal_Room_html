@@ -3,211 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Rack OS - Glass Edition</title>
+    <title>Smart Rack OS - Pure UI Edition</title>
     <style>
-        /* --- 1. 배경 및 전역 설정 (Premium Dark Glass) --- */
+        /* --- 1. Apple 프리미엄 다크 글래스 테마 --- */
         :root {
-            --breeding-color: linear-gradient(135deg, #0A84FF, #0055B3);
-            --mating-color: linear-gradient(135deg, #FF375F, #B30027);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --breeding-bg: linear-gradient(135deg, #0A84FF, #0055B3);
+            --mating-bg: linear-gradient(135deg, #FF375F, #B30027);
+            --glass-panel: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --slot-bg: rgba(255, 255, 255, 0.02);
+            --slot-border: rgba(255, 255, 255, 0.15);
             --text-main: #ffffff;
-            --text-sub: #a1a1a6;
+            --text-sub: #8e8e93;
         }
 
         body {
-            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: radial-gradient(circle at 15% 50%, #1a1a2e, #000000 50%, #0d1b2a 100%);
+            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1c1c2e, #000000 70%);
             color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            -webkit-user-select: none; user-select: none;
         }
 
-        header { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
-        header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1px; }
-        .sync-btn { background: #0A84FF; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .sync-btn:hover { background: #0066CC; transform: scale(1.05); }
+        header { 
+            padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid var(--glass-border); background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(30px); 
+        }
+        header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(90deg, #fff, #8e8e93); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stats { display: flex; gap: 20px; font-size: 14px; color: var(--text-sub); }
+        .stats span strong { color: #0A84FF; }
 
-        /* --- 2. 랙 레이아웃 (가로 스크롤) --- */
-        .rack-container {
-            flex: 1; display: flex; gap: 40px; padding: 40px; overflow-x: auto; overflow-y: hidden;
-            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
+        /* --- 2. 메인 작업 공간 (가로 스크롤 랙 배열) --- */
+        .main-workspace {
+            flex: 1; display: flex; gap: 35px; padding: 40px; overflow-x: auto; overflow-y: hidden;
+            align-items: flex-start; scrollbar-width: thin;
         }
 
-        .glass-panel {
-            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border); border-radius: 30px; padding: 30px;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.2); display: flex; flex-direction: column;
-            min-width: fit-content;
+        .rack-wrapper {
+            background: var(--glass-panel); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border); border-radius: 28px; padding: 25px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4); display: flex; flex-direction: column;
+            min-width: fit-content; transition: border-color 0.3s;
         }
-        
-        .rack-title { font-size: 22px; font-weight: 600; margin-bottom: 20px; color: var(--text-sub); }
+        .rack-wrapper:hover { border-color: rgba(255,255,255,0.2); }
+        .rack-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .rack-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+        .rack-subtitle { font-size: 13px; color: var(--text-sub); }
 
-        .grid-7 { display: grid; grid-template-columns: repeat(7, 85px); gap: 12px; }
+        /* 7열 격자 구조 */
+        .grid-7 { display: grid; grid-template-columns: repeat(7, 88px); gap: 14px; }
 
-        /* --- 3. 케이지 및 슬롯 --- */
+        /* --- 3. 슬롯 & IOS 스타일 케이지 아이콘 --- */
         .slot {
-            width: 85px; height: 85px; border-radius: 20px; background: rgba(255,255,255,0.02);
-            border: 1px dashed rgba(255,255,255,0.15); position: relative;
-            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-            cursor: pointer;
+            width: 88px; height: 88px; border-radius: 24px; background: var(--slot-bg);
+            border: 1px dashed var(--slot-border); position: relative;
+            display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .slot:hover { background: rgba(255,255,255,0.05); }
-        .slot.drag-over { transform: scale(1.05); border-color: #0A84FF; background: rgba(10, 132, 255, 0.1); }
+        .slot::before {
+            content: attr(data-label); font-size: 11px; color: rgba(255,255,255,0.15); font-weight: 600;
+            position: absolute; z-index: 1;
+        }
+        .slot.drag-over { transform: scale(1.04); border-color: #0A84FF; background: rgba(10, 132, 255, 0.12); box-shadow: 0 0 15px rgba(10,132,255,0.3); }
 
         .cage {
-            width: 100%; height: 100%; border-radius: 20px; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; border-radius: 24px; position: absolute; top: 0; left: 0;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: grab; z-index: 10;
-            transition: transform 0.1s; border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35); cursor: grab; z-index: 10;
+            border: 1px solid rgba(255,255,255,0.25); box-sizing: border-box;
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s;
         }
-        .cage:active { cursor: grabbing; transform: scale(1.1); z-index: 100; }
-        .cage.dragging { opacity: 0.5; }
+        .cage:active { cursor: grabbing; transform: scale(1.08); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .cage.dragging { opacity: 0.3; transform: scale(0.9); }
         
-        .cage.breeding { background: var(--breeding-color); }
-        .cage.mating { background: var(--mating-color); }
+        .cage.breeding { background: var(--breeding-bg); }
+        .cage.mating { background: var(--mating-bg); }
 
-        .strain-code { font-size: 28px; font-weight: 700; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-        .sub-id { font-size: 13px; font-weight: 500; opacity: 0.9; margin-top: 2px; }
+        .strain-code { font-size: 30px; font-weight: 700; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.3); letter-spacing: -0.5px; }
+        .sub-id { font-size: 13px; font-weight: 600; opacity: 0.9; margin-top: 4px; background: rgba(0,0,0,0.15); padding: 1px 7px; border-radius: 8px; }
 
-        /* --- 4. 하단 임시 보관소 (Dock) --- */
-        .dock-wrapper { padding: 20px 40px; background: rgba(0,0,0,0.4); border-top: 1px solid var(--glass-border); }
+        /* --- 4. 하단 임시 보관소 (Apple Dock 스탠스) --- */
+        .dock-container { padding: 25px 40px; background: rgba(0,0,0,0.5); border-top: 1px solid var(--glass-border); backdrop-filter: blur(30px); }
+        .dock-title { font-size: 13px; color: var(--text-sub); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
         .dock {
-            display: flex; gap: 12px; height: 90px; align-items: center; overflow-x: auto;
-            padding: 10px; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border);
+            display: flex; gap: 15px; height: 96px; align-items: center; overflow-x: auto;
+            padding: 10px 20px; background: rgba(255,255,255,0.04); border-radius: 28px; border: 1px solid var(--glass-border);
         }
-        .dock .cage { position: relative; width: 75px; height: 75px; flex-shrink: 0; }
-        .dock-title { font-size: 14px; color: var(--text-sub); margin-bottom: 10px; }
+        .dock .cage { position: relative; width: 76px; height: 76px; flex-shrink: 0; border-radius: 20px; }
+        .dock .strain-code { font-size: 26px; }
+        .dock .sub-id { font-size: 11px; }
 
-        /* --- 5. 입력 팝업 (Modal) --- */
+        /* --- 5. 정보 제어 팝업 윈도우 (Glass Modal) --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 1000;
-            display: none; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 1000; display: none; justify-content: center; align-items: center;
         }
         .modal {
-            background: rgba(30, 30, 35, 0.9); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--glass-border); border-radius: 24px; width: 400px; padding: 30px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5); color: white;
+            background: rgba(25, 25, 30, 0.85); border: 1px solid var(--glass-border); border-radius: 28px;
+            width: 420px; padding: 35px; box-shadow: 0 40px 80px rgba(0,0,0,0.6); color: white;
+            animation: modalScale 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .modal h2 { margin-top: 0; margin-bottom: 20px; font-size: 22px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 5px; }
+        @keyframes modalScale { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal h2 { margin-top: 0; margin-bottom: 25px; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; font-weight: 600; }
         .form-control {
-            width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.2); color: white; font-size: 14px; box-sizing: border-box;
+            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.3); color: white; font-size: 15px; box-sizing: border-box; transition: 0.2s;
         }
-        .form-row { display: flex; gap: 10px; }
-        .modal-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
-        .btn { padding: 10px 15px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; color: white; }
-        .btn-cancel { background: rgba(255,255,255,0.1); }
-        .btn-save { background: #0A84FF; }
-        .btn-delete { background: #FF375F; margin-right: auto; }
+        .form-control:focus { outline: none; border-color: #0A84FF; background: rgba(0,0,0,0.5); }
+        .form-row { display: flex; gap: 12px; }
+        .modal-btns { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; }
+        .btn { padding: 12px 20px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn:hover { transform: scale(1.03); }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-save { background: #0A84FF; color: white; }
+        .btn-delete { background: #FF375F; color: white; margin-right: auto; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>Smart Rack OS</h1>
-    <button class="sync-btn" onclick="syncWithGoogle()">구글 시트 동기화</button>
+    <div class="stats">
+        <span id="stat-mating">Mating: <strong>10</strong> cages</span>
+        <span id="stat-breeding">Breeding: <strong>10</strong> cages</span>
+    </div>
 </header>
 
-<div class="rack-container" id="rack-container">
+<div class="main-workspace" id="workspace">
     </div>
 
-<div class="dock-wrapper">
-    <div class="dock-title">임시 보관소 (Overflow Dock) - 랙에서 넘친 케이지가 이곳으로 이동합니다.</div>
+<div class="dock-container">
+    <div class="dock-title">임시 보관소 (Overflow Dock)</div>
     <div class="dock" id="dock" ondragover="event.preventDefault()" ondrop="handleDropToDock(event)"></div>
 </div>
 
 <div class="modal-overlay" id="modal">
     <div class="modal">
-        <h2 id="modal-title">케이지 정보</h2>
+        <h2 id="modal-title">케이지 설정</h2>
         <input type="hidden" id="m-id">
         <input type="hidden" id="m-rack">
         <input type="hidden" id="m-cell">
         
         <div class="form-group">
-            <label>용도 (Type)</label>
+            <label>용도구분 (Type)</label>
             <select id="m-type" class="form-control">
-                <option value="breeding">Breeding</option>
-                <option value="mating">Mating</option>
+                <option value="breeding">Breeding (생산용)</option>
+                <option value="mating">Mating (교배용)</option>
             </select>
         </div>
         <div class="form-row">
             <div class="form-group" style="flex:1;">
-                <label>표시 알파벳 (Strain)</label>
-                <input type="text" id="m-code" class="form-control" placeholder="예: A, C, W">
+                <label>표시 문자 (Strain Key)</label>
+                <input type="text" id="m-code" class="form-control" placeholder="A, C, W 등">
             </div>
             <div class="form-group" style="flex:1;">
-                <label>서브 번호 (ID/Heads)</label>
-                <input type="text" id="m-sub" class="form-control" placeholder="예: 53, 5마리">
+                <label>서브 코드 (ID/Heads)</label>
+                <input type="text" id="m-sub" class="form-control" placeholder="53, 5마리 등">
             </div>
         </div>
         <div class="form-group">
-            <label>특이사항 (Notes)</label>
-            <textarea id="m-notes" class="form-control" rows="3"></textarea>
+            <label>특이사항 기록 (Notes)</label>
+            <textarea id="m-notes" class="form-control" rows="3" placeholder="실험 정보, 라벨 코멘트 등"></textarea>
         </div>
         
         <div class="modal-btns">
             <button class="btn btn-delete" id="btn-delete" onclick="deleteCage()">삭제</button>
             <button class="btn btn-cancel" onclick="closeModal()">취소</button>
-            <button class="btn btn-save" onclick="saveCage()">저장</button>
+            <button class="btn btn-save" onclick="saveCage()">적용</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 0. 설정 및 상태 ---
-    const API_URL = "https://script.google.com/macros/s/AKfycbzuWMIb2sHbZRkp6mQ1eNwiTRo6CqI-ZFeHHGaIJb5xiiciEQK3dWRXNV6tLn4W6Zlu/exec"; 
-    const RACK_CONFIG = { 'A': 35, 'B': 35, 'C': 35, 'D': 21, 'E': 21 }; // 5x7=35, 3x7=21
-    
-    // 테스트용 임시 데이터 (나중에 구글시트에서 불러옴)
-    let cages = [
-        { id: 'c1', rackId: 'A', cellIdx: 0, type: 'breeding', code: 'A', subId: 'WT', notes: '' },
-        { id: 'c2', rackId: 'A', cellIdx: 2, type: 'mating', code: 'A', subId: '53', notes: '' },
-        { id: 'c3', rackId: 'B', cellIdx: 0, type: 'breeding', code: 'C', subId: '12', notes: '' }
-    ];
-
+    // --- 0. 기본 환경 설정 (A~C: 5행, D~E: 3행) ---
+    const RACK_CONFIG = { 'A': 35, 'B': 35, 'C': 35, 'D': 21, 'E': 21 };
     let draggedCageId = null;
 
-    // --- 1. UI 렌더링 (그리드 및 케이지) ---
-    function initUI() {
-        const container = document.getElementById('rack-container');
-        container.innerHTML = '';
+    // --- 1. 연구원님 맞춤형 초기 정밀 시뮬레이션 데이터 (Mating 10, Breeding 10) ---
+    let cages = [
+        // Mating 케이지 10개 (A: K18-hACE2 번호 기반 매핑)
+        { id: 'm1', rackId: 'A', cellIdx: 0, type: 'mating', code: 'A', subId: '51', notes: 'Mating 세트 1' },
+        { id: 'm2', rackId: 'A', cellIdx: 1, type: 'mating', code: 'A', subId: '52', notes: 'Mating 세트 2' },
+        { id: 'm3', rackId: 'A', cellIdx: 3, type: 'mating', code: 'A', subId: '53', notes: 'Mating 세트 3' },
+        { id: 'm4', rackId: 'A', cellIdx: 4, type: 'mating', code: 'A', subId: '54', notes: 'Mating 세트 4' },
+        { id: 'm5', rackId: 'B', cellIdx: 7, type: 'mating', code: 'A', subId: '55', notes: '' },
+        { id: 'm6', rackId: 'B', cellIdx: 8, type: 'mating', code: 'A', subId: '56', notes: '' },
+        { id: 'm7', rackId: 'C', cellIdx: 14, type: 'mating', code: 'A', subId: '57', notes: '' },
+        { id: 'm8', rackId: 'C', cellIdx: 15, type: 'mating', code: 'A', subId: '58', notes: '' },
+        { id: 'm9', rackId: 'D', cellIdx: 2, type: 'mating', code: 'A', subId: '59', notes: '' },
+        { id: 'm10', rackId: 'E', cellIdx: 5, type: 'mating', code: 'A', subId: '60', notes: '' },
 
-        // 랙 뼈대 만들기
+        // Breeding 케이지 10개 (C: Aim2 알파벳 기반 매핑)
+        { id: 'b1', rackId: 'A', cellIdx: 10, type: 'breeding', code: 'C', subId: '5마리', notes: 'Genotyping 필요' },
+        { id: 'b2', rackId: 'A', cellIdx: 11, type: 'breeding', code: 'C', subId: 'C10', notes: '' },
+        { id: 'b3', rackId: 'A', cellIdx: 12, type: 'breeding', code: 'C', subId: 'C11', notes: '' },
+        { id: 'b4', rackId: 'B', cellIdx: 2, type: 'breeding', code: 'C', subId: '3마리', notes: '' },
+        { id: 'b5', rackId: 'B', cellIdx: 3, type: 'breeding', code: 'C', subId: '4마리', notes: '' },
+        { id: 'b6', rackId: 'C', cellIdx: 0, type: 'breeding', code: 'C', subId: 'C12', notes: '' },
+        { id: 'b7', rackId: 'C', cellIdx: 1, type: 'breeding', code: 'C', subId: 'C13', notes: '' },
+        { id: 'b8', rackId: 'D', cellIdx: 10, type: 'breeding', code: 'C', subId: '2마리', notes: '' },
+        { id: 'b9', rackId: 'D', cellIdx: 11, type: 'breeding', code: 'C', subId: 'C14', notes: '' },
+        { id: 'b10', rackId: 'E', cellIdx: 0, type: 'breeding', code: 'C', subId: '5마리', notes: '' }
+    ];
+
+    // --- 2. 랙 도면 빌드 및 슬롯 배치 ---
+    function buildWorkspace() {
+        const workspace = document.getElementById('workspace');
+        workspace.innerHTML = '';
+
         for (const [rackName, capacity] of Object.entries(RACK_CONFIG)) {
-            const panel = document.createElement('div');
-            panel.className = 'glass-panel';
-            panel.innerHTML = `<div class="rack-title">Rack ${rackName}</div>`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'rack-wrapper';
+            
+            const maxRow = capacity / 7;
+            wrapper.innerHTML = `
+                <div class="rack-header">
+                    <div class="rack-title">Rack ${rackName}</div>
+                    <div class="rack-subtitle">${maxRow}행 × 7열 (${capacity}칸)</div>
+                </div>
+            `;
             
             const grid = document.createElement('div');
             grid.className = 'grid-7';
             
-            // 빈 슬롯 만들기
             for (let i = 0; i < capacity; i++) {
+                const rowChar = String.fromCharCode(64 + Math.floor(i / 7) + 1);
+                const colNum = (i % 7) + 1;
+                const cellLabel = `${rowChar}-${colNum}`;
+
                 const slot = document.createElement('div');
                 slot.className = 'slot';
                 slot.dataset.rack = rackName;
                 slot.dataset.idx = i;
+                slot.setAttribute('data-label', cellLabel);
                 
-                // 클릭 시 신규 케이지 팝업
+                // 클릭 이벤트 -> 빈 곳 클릭 시 새 케이지 추가 창 개방
                 slot.onclick = () => openModal(null, rackName, i);
                 
-                // 드래그 앤 드롭 이벤트
+                // 완벽한 모션 그래픽 드래그 유도
                 slot.ondragover = e => { e.preventDefault(); slot.classList.add('drag-over'); };
                 slot.ondragleave = () => slot.classList.remove('drag-over');
                 slot.ondrop = e => handleDrop(e, rackName, i);
                 
                 grid.appendChild(slot);
             }
-            panel.appendChild(grid);
-            container.appendChild(panel);
+            wrapper.appendChild(grid);
+            workspace.appendChild(wrapper);
         }
         renderCages();
     }
 
+    // --- 3. 실시간 그래픽 렌더링 및 동적 스왑 제어 ---
     function renderCages() {
-        // 기존 렌더링된 쥐들 청소
         document.querySelectorAll('.cage').forEach(el => el.remove());
         const dock = document.getElementById('dock');
 
@@ -217,45 +265,44 @@
             el.draggable = true;
             el.innerHTML = `<span class="strain-code">${cage.code}</span><span class="sub-id">${cage.subId}</span>`;
             
-            // 드래그 이벤트 (잔상 버그 해결)
+            // 물리 기반 드래그 피드백 제어
             el.ondragstart = (e) => {
                 draggedCageId = cage.id;
-                e.dataTransfer.effectAllowed = "move";
-                setTimeout(() => el.classList.add('dragging'), 0); 
+                setTimeout(() => el.classList.add('dragging'), 0);
             };
             el.ondragend = () => { el.classList.remove('dragging'); draggedCageId = null; };
             
-            // 클릭 시 수정 팝업 (이벤트 버블링 방지)
+            // 케이지 클릭 -> 상세 정보 제어창 개방
             el.onclick = (e) => { e.stopPropagation(); openModal(cage.id, cage.rackId, cage.cellIdx); };
 
-            // 위치에 맞게 삽입
             if (cage.rackId === 'DOCK' || cage.cellIdx === null) {
                 dock.appendChild(el);
             } else {
                 const targetSlot = document.querySelector(`.slot[data-rack="${cage.rackId}"][data-idx="${cage.cellIdx}"]`);
-                if(targetSlot) targetSlot.appendChild(el);
+                if (targetSlot) targetSlot.appendChild(el);
             }
         });
+        updateStats();
     }
 
-    // --- 2. 드래그 앤 드롭 핵심 (밀어내기 로직 완벽 적용) ---
+    // --- 4. 대형 멀티 랙 간 시프트(밀어내기) 알고리즘 ---
     function handleDrop(e, targetRack, targetIdx) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
         if (!draggedCageId) return;
 
         const draggedCage = cages.find(c => c.id === draggedCageId);
-        if (draggedCage.rackId === targetRack && draggedCage.cellIdx === targetIdx) return; // 제자리
+        if (draggedCage.rackId === targetRack && draggedCage.cellIdx === targetIdx) return;
 
-        // 도착지에 쥐가 있으면 밀어내기 (Shift Right)
+        // 도착지에 이미 케이지가 선점되어 있는지 감지
         const occupant = cages.find(c => c.rackId === targetRack && c.cellIdx === targetIdx && c.id !== draggedCageId);
         
         if (occupant) {
+            // 연쇄 밀어내기: 같은 랙에 존재하며 목표 지점보다 인덱스가 크거나 같은 모든 자원을 한 칸씩 우측 전진
             cages.forEach(c => {
-                // 도착지 랙에 있고, 타겟 번호보다 뒤에 있는 쥐들을 모두 한 칸씩 민다.
                 if (c.rackId === targetRack && c.id !== draggedCageId && c.cellIdx >= targetIdx) {
                     c.cellIdx += 1;
-                    // 랙 정원(capacity)을 초과하면 임시 보관소(DOCK)로 쫓겨남
+                    // 해당 랙의 총 용량을 돌파하면 하단 도킹 스테이션으로 자동 덤핑(DOCK 유입)
                     if (c.cellIdx >= RACK_CONFIG[targetRack]) {
                         c.rackId = 'DOCK';
                         c.cellIdx = null;
@@ -264,15 +311,13 @@
             });
         }
 
-        // 이동한 쥐 안착
+        // 드래그 대상 정착
         draggedCage.rackId = targetRack;
         draggedCage.cellIdx = targetIdx;
         
         renderCages();
-        // syncWithGoogle(); // 드롭할 때마다 자동 저장하려면 주석 해제
     }
 
-    // 임시 보관소로 바로 드롭
     function handleDropToDock(e) {
         e.preventDefault();
         if (!draggedCageId) return;
@@ -282,7 +327,7 @@
         renderCages();
     }
 
-    // --- 3. 입력 모달 (수정/생성) ---
+    // --- 5. 제어창 데이터 처리 바인딩 ---
     const modal = document.getElementById('modal');
 
     function openModal(cageId, rackId, cellIdx) {
@@ -290,9 +335,8 @@
         document.getElementById('m-cell').value = cellIdx;
 
         if (cageId) {
-            // 기존 케이지 수정
             const c = cages.find(x => x.id === cageId);
-            document.getElementById('modal-title').innerText = "케이지 정보 수정";
+            document.getElementById('modal-title').innerText = "케이지 상세 정보";
             document.getElementById('m-id').value = c.id;
             document.getElementById('m-type').value = c.type;
             document.getElementById('m-code').value = c.code;
@@ -300,8 +344,7 @@
             document.getElementById('m-notes').value = c.notes;
             document.getElementById('btn-delete').style.display = 'block';
         } else {
-            // 신규 케이지 생성
-            document.getElementById('modal-title').innerText = `신규 등록 (Rack ${rackId}-${cellIdx+1})`;
+            document.getElementById('modal-title').innerText = `신규 케이지 등록 (Rack ${rackId} | ${cellIdx+1}번 슬롯)`;
             document.getElementById('m-id').value = "";
             document.getElementById('m-type').value = "breeding";
             document.getElementById('m-code').value = "";
@@ -319,19 +362,19 @@
         const rackId = document.getElementById('m-rack').value;
         const cellIdx = parseInt(document.getElementById('m-cell').value);
         
-        const newData = {
+        const info = {
             type: document.getElementById('m-type').value,
             code: document.getElementById('m-code').value.toUpperCase(),
             subId: document.getElementById('m-sub').value,
             notes: document.getElementById('m-notes').value
         };
 
-        if (id) { // 업데이트
+        if (id) {
             const c = cages.find(x => x.id === id);
-            Object.assign(c, newData);
-        } else { // 신규
+            Object.assign(c, info);
+        } else {
             cages.push({
-                id: 'c_' + Date.now(), rackId: rackId, cellIdx: cellIdx, ...newData
+                id: 'cage_' + Date.now(), rackId: rackId, cellIdx: cellIdx, ...info
             });
         }
         closeModal();
@@ -345,14 +388,15 @@
         renderCages();
     }
 
-    // --- 4. 통신 ---
-    function syncWithGoogle() {
-        alert("이 기능은 구글 앱스 스크립트 API URL이 연결되면 활성화됩니다!");
-        console.log("Current Data:", cages);
+    function updateStats() {
+        const matingCount = cages.filter(c => c.type === 'mating').length;
+        const breedingCount = cages.filter(c => c.type === 'breeding').length;
+        document.getElementById('stat-mating').innerHTML = `Mating: <strong>${matingCount}</strong> cages`;
+        document.getElementById('stat-breeding').innerHTML = `Breeding: <strong>${breedingCount}</strong> cages`;
     }
 
-    // 앱 시작!
-    initUI();
+    // 시스템 부팅
+    buildWorkspace();
 </script>
 
 </body>
