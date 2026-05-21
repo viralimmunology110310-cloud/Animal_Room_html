@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Rack OS v7.5</title>
+    <title>Smart Rack OS v8.0</title>
     <style>
         /* --- 1. Premium Dark Tech UI Theme --- */
         :root {
@@ -55,7 +55,7 @@
         .config-row:last-child { margin-bottom: 0; }
         .config-input { width: 55px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 5px; border-radius: 8px; text-align: center; font-weight: bold; }
 
-        /* 🗺️ 배치 도면 내비게이터 구역 (찌그러짐 방지 대수술) */
+        /* 🗺️ 배치 도면 내비게이터 구역 */
         .room-map {
             position: relative; width: 100%; height: 290px; background: rgba(0,0,0,0.2);
             border: 1px solid var(--glass-border); border-radius: 24px; box-sizing: border-box; flex-shrink: 0;
@@ -77,7 +77,7 @@
         .mini-dot.filled { background: #0a84ff; }
         .map-rack:hover .mini-dot.filled { background: #ffe600; }
 
-        /* 업로드 이미지 레이아웃 1:1 완벽 정밀 마킹 크기 조정 */
+        /* 도면 배치도 고정 규격 */
         .rack-A { top: 15px; left: 15px; width: 55px; height: 110px; }
         .rack-C { top: 140px; left: 15px; width: 55px; height: 130px; }
         .rack-B { top: 15px; right: 15px; width: 55px; height: 110px; }
@@ -94,7 +94,7 @@
         }
 
         /* 오른쪽 메인 제어판 */
-        .board-pane { flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; overflow: auto; box-sizing: border-box; }
+        .board-pane { flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; overflow: auto; box-sizing: border-box; position: relative; }
         .board-header { margin-bottom: 20px; }
         .board-title { font-size: 26px; font-weight: 700; margin: 0; }
         .board-desc { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
@@ -129,15 +129,13 @@
         .cage.breeding { background: var(--breeding-bg); color: #1c1c1e; border: 1px solid rgba(255,255,255,0.8); }
         .cage.mating { background: var(--mating-bg); color: #1c1c1e; border: 1px solid rgba(255,225,0,0.7); }
         
-        /* ⭐️ [이격 마우스 오차 완전 격파] Fixed 포지션 절대 원점 고정 및 여백 마진 초기화 */
+        /* ⭐️ [커서 완전 고정 알고리즘] 드래그 연산 시 변형 스케일 마진 배제 */
         .cage.floating {
             cursor: grabbing; z-index: 9999 !important;
             box-shadow: 0 35px 60px rgba(0,0,0,0.7);
             pointer-events: none;
             position: fixed !important;
-            transform: scale(1.08) !important;
             margin: 0 !important; padding: 0 !important;
-            left: 0; top: 0;
         }
 
         .strain-code { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }
@@ -185,7 +183,7 @@
 <body>
 
 <header>
-    <h1>Smart Rack OS <span style="font-size:14px; color:#ffcc00; font-weight:bold; margin-left:6px;">v7.5 Precision Pro</span></h1>
+    <h1>Smart Rack OS <span style="font-size:14px; color:#ffcc00; font-weight:bold; margin-left:6px;">v8.0 Absolute Precision</span></h1>
     <div class="top-right">
         <div class="progress-text">총 공간 밀도: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -293,19 +291,18 @@
         { id: 'm1', rackId: 'A', cellIdx: 0, type: 'mating', code: 'A', subId: '53', female: 2, male: 1, dob: '', dom: '2026-05-10', notes: '' },
         { id: 'm2', rackId: 'A', cellIdx: 1, type: 'mating', code: 'A', subId: '54', female: 1, male: 1, dob: '', dom: '2026-05-12', notes: '' },
         { id: 'm3', rackId: 'A', cellIdx: 7, type: 'mating', code: 'A', subId: '55', female: 2, male: 1, dob: '', dom: '2026-05-14', notes: '' },
-        { id: 'b1', rackId: 'A', cellIdx: 3, type: 'breeding', code: 'W', subId: '5', female: 5, male: 0, dob: '2026-04-01', dom: '', notes: '' },
+        { id: 'b1', rackId: 'A', cellIdx: 3, type: 'breeding', code: 'W', subId: '5마리', female: 5, male: 0, dob: '2026-04-01', dom: '', notes: '' },
         { id: 'b2', rackId: 'A', cellIdx: 4, type: 'breeding', code: 'C', subId: 'C10', female: 3, male: 2, dob: '2026-04-03', dom: '', notes: '' },
         { id: 'm4', rackId: 'B', cellIdx: 0, type: 'mating', code: 'A', subId: '51', female: 1, male: 1, dob: '', dom: '', notes: '' },
         { id: 'b3', rackId: 'C', cellIdx: 0, type: 'breeding', code: 'C', subId: 'C12', female: 4, male: 0, dob: '', dom: '', notes: '' }
     ];
 
-    // 마스터 20개 테스트 베드 보정용 자동 채우기
     for(let i=5; i<=10; i++) cages.push({ id: `m_init_${i}`, rackId: 'B', cellIdx: i, type: 'mating', code: 'A', subId: `5${i}`, female: 2, male: 1, dob: '', dom: '', notes: '' });
     for(let i=4; i<=11; i++) cages.push({ id: `b_init_${i}`, rackId: 'C', cellIdx: i, type: 'breeding', code: 'C', subId: `3`, female: 3, male: 0, dob: '', dom: '', notes: '' });
 
-    let dragData = { id: null, active: false, el: null, startX: 0, startY: 0, hasMoved: false };
+    let dragData = { id: null, active: false, el: null, startX: 0, startY: 0, clickOffsetX: 0, clickOffsetY: 0, hasMoved: false };
 
-    // --- 1. [버그 완전 타파] 무오차 드래그 및 마이크로 클릭 감지 엔진 ---
+    // --- 1. [마우스 이격 원천 차단] 1:1 절대 동적 오프셋 고정 엔진 ---
     function setupDragEngine(cageEl, cageId) {
         cageEl.addEventListener('pointerdown', (e) => {
             if (e.button !== 0) return;
@@ -316,7 +313,12 @@
             dragData.el = cageEl;
             dragData.startX = e.clientX;
             dragData.startY = e.clientY;
-            dragData.hasMoved = false; // 마우스 이동 전 플래그 초기화
+            dragData.hasMoved = false;
+
+            // ⭐️ [오차 파괴 핵심] 클릭한 그 순간, 뷰포트 내 엘리먼트의 정확한 사각 좌표를 따서 마우스 포인터와의 실제 거리 계산
+            const rect = cageEl.getBoundingClientRect();
+            dragData.clickOffsetX = e.clientX - rect.left;
+            dragData.clickOffsetY = e.clientY - rect.top;
 
             document.addEventListener('pointermove', onPointerMove);
             document.addEventListener('pointerup', onPointerUp);
@@ -326,18 +328,16 @@
     function onPointerMove(e) {
         if (!dragData.active) return;
         
-        // ⭐️ [정밀 보정] 처음 누른 자리에서 최소 4px 이상 이동했을 때만 실질적인 드래그 상태로 전환! (미스클릭 완전 방지)
         if (!dragData.hasMoved && Math.hypot(e.clientX - dragData.startX, e.clientY - dragData.startY) > 4) {
             dragData.hasMoved = true;
             dragData.el.classList.add('floating');
         }
 
         if (dragData.hasMoved) {
-            // ⭐️ 브라우저 스크롤 및 배치 노이즈를 완전 배제한 포인터 정중앙 1:1 고정 연산
-            dragData.el.style.left = (e.clientX - 46) + 'px';
-            dragData.el.style.top = (e.clientY - 46) + 'px';
+            // ⭐️ 잡은 위치 오프셋을 그대로 유지하여 마우스 포인터 정위치에 고정 (우하단 엇나감 해결)
+            dragData.el.style.left = (e.clientX - dragData.clickOffsetX) + 'px';
+            dragData.el.style.top = (e.clientY - dragData.clickOffsetY) + 'px';
 
-            // 왼쪽 배치도 실시간 스캔 및 크로스 랙 하이라이트 연동
             document.querySelectorAll('.map-rack').forEach(rackEl => {
                 const r = rackEl.getBoundingClientRect();
                 if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
@@ -361,7 +361,7 @@
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
 
-        // ⭐️ [클릭/드래그 분할 제어 판정 완료] 사용자가 마우스를 거의 움직이지 않았다면 클릭으로 판단하여 수정창 오픈!
+        // ⭐️ 움직임이 없었다면 정밀 클릭으로 인정하여 정상 팝업 작동
         if (!dragData.hasMoved) {
             openModal(dragData.id);
             return;
@@ -466,16 +466,18 @@
             const el = document.createElement('div');
             el.className = `cage ${cage.type}`;
             
+            // ⭐️ [요구사항 반영] 텍스트 매핑 조건문 단순화 보강
             let displaySub = cage.subId;
-            if (cage.type === 'mating' && (cage.female > 0 || cage.male > 0)) {
-                displaySub = `♀${cage.female}/♂${cage.male}`;
-            } else if (cage.type === 'breeding' && cage.female > 0) {
-                displaySub = `${cage.female}마리`;
+            if (cage.type === 'mating') {
+                // 노란색(Mating)은 무조건 A52처럼 알파벳 기호와 번호 조합만 표기 (암수 숨김)
+                displaySub = cage.code + cage.subId;
+                el.innerHTML = `<span class="strain-code" style="font-size:24px;">${displaySub}</span>`;
+            } else {
+                // 흰색(Breeding)은 기호와 서브텍스트(마리수/번호) 형태로 조합 표기
+                displaySub = cage.subId;
+                el.innerHTML = `<span class="strain-code">${cage.code}</span><span class="sub-id">${displaySub}</span>`;
             }
-
-            el.innerHTML = `<span class="strain-code">${cage.code}</span><span class="sub-id">${displaySub}</span>`;
             
-            // 기존 케이지 마우스 터치 기반 코어 주입
             setupDragEngine(el, cage.id);
 
             setTimeout(() => {
@@ -488,7 +490,7 @@
         updateStatsBar();
     }
 
-    // --- 4. 미니 도면 바 그래프 스케일 연산 처리 ---
+    // --- 4. 미니 도면 레이아웃 매핑 제어 ---
     function buildLeftSidebar() {
         const configBox = document.getElementById('config-box');
         configBox.innerHTML = '';
@@ -542,7 +544,7 @@
         });
     }
 
-    // --- 5. 정보 수정 확장형 모달 창 제어 ---
+    // --- 5. 세부 속성 모달 제어창 ---
     const modal = document.getElementById('modal');
     let targetSlotIdxForCreate = null;
 
@@ -583,11 +585,11 @@
         if (type === 'mating') {
             document.getElementById('dob-group').style.display = 'none';
             document.getElementById('dom-group').style.display = 'block';
-            document.getElementById('sub-label').innerText = "Mating 일련세트 번호";
+            document.getElementById('sub-label').innerText = "Mating 일련세트 번호 (예: 52)";
         } else {
             document.getElementById('dob-group').style.display = 'block';
             document.getElementById('dom-group').style.display = 'none';
-            document.getElementById('sub-label').innerText = "Genotype 고유번호";
+            document.getElementById('sub-label').innerText = "Genotype 번호 또는 마리수";
         }
     }
 
