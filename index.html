@@ -1536,7 +1536,7 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Google Apps Script Sync ───────────────────
     // 구글 시트 배포 후 발급받은 Web App URL을 여기에 입력하세요.
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuZaVBi3SkjmvUaHCY5lMagziG5Y9f1Og1o1UR2b_K5-Bn97GVvR545aJJCFBa5vq-/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbywMUQVCaho74Tanl8rlND-a4chI7AIZP4nI7bN-VZcefDbH7A_B0Wwlw3dfz4Nslhk/exec'; 
     // 임의의 비밀번호(API KEY)를 설정하세요. Apps Script의 API_KEY와 정확히 같아야 합니다.
     const API_KEY = 'my-secret-password-1234';
 
@@ -1619,30 +1619,51 @@ document.addEventListener('pointerdown', (e) => {
         if (!currentCage) return;
 
         let rackName = currentCage.rackId;
-        let cellIdx = parseInt(currentCage.cellIdx);
-        let rackNames = Object.keys(RACK_ROWS);
-        let currentRackIdx = rackNames.indexOf(rackName);
-        let row = Math.floor(cellIdx / 7);
-        let col = cellIdx % 7;
-        let nextRow = row, nextCol = col, nextRack = rackName;
+        let startCellIdx = parseInt(currentCage.cellIdx);
+        let maxRows = RACK_ROWS[rackName];
+        
+        let rackCages = cages.filter(c => c.rackId === rackName);
+        if (rackCages.length <= 1) return;
 
-        if (dir === 'right') {
-            nextCol++; if (nextCol > 6) { nextCol = 0; nextRow++; }
-        } else if (dir === 'left') {
-            nextCol--; if (nextCol < 0) { nextCol = 6; nextRow--; }
-        } else if (dir === 'down') { nextRow++; }
-        else if (dir === 'up') { nextRow--; }
+        let nextCage = null;
 
-        let maxRows = RACK_ROWS[nextRack];
-        if (nextRow >= maxRows) {
-            nextRow = 0; // 랙 끝이면 첫째 줄로
-        } else if (nextRow < 0) {
-            nextRow = maxRows - 1; // 랙 첫 줄이면 끝 줄로
+        if (dir === 'right' || dir === 'left') {
+            rackCages.sort((a, b) => a.cellIdx - b.cellIdx);
+            let currentIndex = rackCages.findIndex(c => c.id === currentId);
+            if (dir === 'right') nextCage = rackCages[(currentIndex + 1) % rackCages.length];
+            else nextCage = rackCages[(currentIndex - 1 + rackCages.length) % rackCages.length];
+        } else if (dir === 'down' || dir === 'up') {
+            let startCol = startCellIdx % 7;
+            let startRow = Math.floor(startCellIdx / 7);
+            
+            // 같은 열에서 위/아래 찾기
+            let currRow = startRow;
+            for (let i = 0; i < maxRows; i++) {
+                if (dir === 'down') currRow = (currRow + 1) % maxRows;
+                else currRow = (currRow - 1 + maxRows) % maxRows;
+                
+                let targetCellIdx = currRow * 7 + startCol;
+                let found = rackCages.find(c => c.cellIdx === targetCellIdx);
+                if (found) { nextCage = found; break; }
+            }
+            
+            // 같은 열에 없으면, 위/아래 줄에서 가장 가까운 열 찾기
+            if (!nextCage) {
+                for (let i = 0; i < maxRows; i++) {
+                    if (dir === 'down') startRow = (startRow + 1) % maxRows;
+                    else startRow = (startRow - 1 + maxRows) % maxRows;
+                    
+                    let rowCages = rackCages.filter(c => Math.floor(c.cellIdx / 7) === startRow);
+                    if (rowCages.length > 0) {
+                        rowCages.sort((a, b) => Math.abs((a.cellIdx % 7) - startCol) - Math.abs((b.cellIdx % 7) - startCol));
+                        nextCage = rowCages[0];
+                        break;
+                    }
+                }
+            }
         }
 
-        let nextCellIdx = nextRow * 7 + nextCol;
-        let nextCage = cages.find(c => c.rackId === nextRack && c.cellIdx === nextCellIdx);
-        if (nextCage) {
+        if (nextCage && nextCage.id !== currentId) {
             saveCage();
             openModal(nextCage.id);
         }
