@@ -173,9 +173,9 @@
         .nav-up:hover { transform: translateX(-50%) scale(1.1); }
         .nav-down { bottom: 10px; left: 50%; transform: translateX(-50%); }
         .nav-down:hover { transform: translateX(-50%) scale(1.1); }
-        .nav-left { left: -50px; top: 50%; transform: translateY(-50%); }
+        .nav-left { left: 10px; top: 50%; transform: translateY(-50%); z-index: 110; }
         .nav-left:hover { transform: translateY(-50%) scale(1.1); }
-        .nav-right { right: -50px; top: 50%; transform: translateY(-50%); }
+        .nav-right { right: 10px; top: 50%; transform: translateY(-50%); z-index: 110; }
         .nav-right:hover { transform: translateY(-50%) scale(1.1); }
         @media (max-width: 600px) {
             .nav-left { left: 10px; top: unset; bottom: 10px; transform: none; }
@@ -1536,7 +1536,7 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Google Apps Script Sync ───────────────────
     // 구글 시트 배포 후 발급받은 Web App URL을 여기에 입력하세요.
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyAWqdxSgS8XMQoQ1fVoje6wZBY36-uZtioShGYxAwZQakTn1nqii4AnUPRS1wH35OU/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuZaVBi3SkjmvUaHCY5lMagziG5Y9f1Og1o1UR2b_K5-Bn97GVvR545aJJCFBa5vq-/exec'; 
     // 임의의 비밀번호(API KEY)를 설정하세요. Apps Script의 API_KEY와 정확히 같아야 합니다.
     const API_KEY = 'my-secret-password-1234';
 
@@ -1635,18 +1635,16 @@ document.addEventListener('pointerdown', (e) => {
 
         let maxRows = RACK_ROWS[nextRack];
         if (nextRow >= maxRows) {
-            if (currentRackIdx < rackNames.length - 1) { nextRack = rackNames[currentRackIdx + 1]; nextRow = 0; }
-            else return;
+            nextRow = 0; // 랙 끝이면 첫째 줄로
         } else if (nextRow < 0) {
-            if (currentRackIdx > 0) { nextRack = rackNames[currentRackIdx - 1]; nextRow = RACK_ROWS[nextRack] - 1; }
-            else return;
+            nextRow = maxRows - 1; // 랙 첫 줄이면 끝 줄로
         }
 
         let nextCellIdx = nextRow * 7 + nextCol;
         let nextCage = cages.find(c => c.rackId === nextRack && c.cellIdx === nextCellIdx);
         if (nextCage) {
             saveCage();
-            openEditModal(nextCage.id);
+            openModal(nextCage.id);
         }
     };
 
