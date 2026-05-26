@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Rack OS v8.6 - Absolute Precision Pro</title>
+    <title>Small Animal Room</title>
     <style>
         :root {
             --breeding-color: #ffffff;
@@ -657,7 +657,7 @@
             editLog = [];
             saveLog();
             refreshLogPanel();
-            syncToSheet();
+            debouncedSyncToSheet();
         }
     }
 
@@ -726,7 +726,7 @@
         });
         document.getElementById('day-panel').classList.remove('open');
         renderMainBoard();
-        syncToSheet();
+        debouncedSyncToSheet();
     }
 
     let cages = [];
@@ -1253,7 +1253,7 @@ document.addEventListener('pointerdown', (e) => {
         for (const [rName, rows] of Object.entries(RACK_ROWS)) {
             const rowDiv = document.createElement('div'); rowDiv.className = 'config-row';
             rowDiv.innerHTML = `<span>Rack ${rName} 세로 줄 수</span><input type="number" class="config-input" value="${rows}" min="1" max="10" data-rack="${rName}">`;
-            rowDiv.querySelector('input').onchange = (e) => { RACK_ROWS[e.target.dataset.rack] = parseInt(e.target.value); renderMainBoard(); buildLeftSidebar(); syncToSheet(); };
+            rowDiv.querySelector('input').onchange = (e) => { RACK_ROWS[e.target.dataset.rack] = parseInt(e.target.value); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet(); };
             configBox.appendChild(rowDiv);
         }
         document.querySelectorAll('.map-rack').forEach(rackEl => {
@@ -1411,7 +1411,7 @@ document.addEventListener('pointerdown', (e) => {
                 `${info.code}${info.subId} (${info.type})`
             );
         }
-        closeModal(); renderMainBoard(); buildLeftSidebar();
+        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
 
     function deleteCage() {
@@ -1419,7 +1419,7 @@ document.addEventListener('pointerdown', (e) => {
         const c = cages.find(x => x.id === targetId);
         if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
         cages = cages.filter(c => c.id !== targetId);
-        closeModal(); renderMainBoard(); buildLeftSidebar();
+        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
 
     // ── Strain panel ──────────────────────────────
@@ -1503,11 +1503,21 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Google Apps Script Sync ───────────────────
     // 구글 시트 배포 후 발급받은 Web App URL을 여기에 입력하세요.
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyAvkfakxeL_ULEqMmRyepHZcw_AC1rVx9h8n8bA3N8LBGNMr4bblkZpClvHDyALJC/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyAWqdxSgS8XMQoQ1fVoje6wZBY36-uZtioShGYxAwZQakTn1nqii4AnUPRS1wH35OU/exec'; 
     // 임의의 비밀번호(API KEY)를 설정하세요. Apps Script의 API_KEY와 정확히 같아야 합니다.
     const API_KEY = 'my-secret-password-1234';
 
+
+    let syncTimeout = null;
+    function debouncedSyncToSheet() {
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+            syncToSheet();
+        }, 3000); // 3초 뒤에 동기화
+    }
+
     async function syncToSheet() {
+
         if (!SCRIPT_URL) return;
         const syncBtn = document.getElementById('btn-sync');
         try {
@@ -1567,6 +1577,78 @@ document.addEventListener('pointerdown', (e) => {
 
     buildLeftSidebar();
     renderMainBoard();
+    // Keyboard navigation in modal
+    window.addEventListener('keydown', (e) => {
+        if (modal.style.display !== 'flex') return;
+        
+        // Prevent default scrolling for arrow keys if not in input
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; // allow natural typing
+        } else {
+            return;
+        }
+
+        const currentId = document.getElementById('m-id').value;
+        if (!currentId) return;
+        const currentCage = cages.find(c => c.id === currentId);
+        if (!currentCage) return;
+
+        let rackName = currentCage.rackId;
+        let cellIdx = parseInt(currentCage.cellIdx);
+        
+        let rackNames = Object.keys(RACK_ROWS);
+        let currentRackIdx = rackNames.indexOf(rackName);
+
+        let row = Math.floor(cellIdx / 7);
+        let col = cellIdx % 7;
+        
+        let nextRow = row;
+        let nextCol = col;
+        let nextRack = rackName;
+
+        let handled = false;
+
+        if (e.key === 'ArrowRight') {
+            nextCol++;
+            if (nextCol > 6) { nextCol = 0; nextRow++; }
+            handled = true;
+        } else if (e.key === 'ArrowLeft') {
+            nextCol--;
+            if (nextCol < 0) { nextCol = 6; nextRow--; }
+            handled = true;
+        } else if (e.key === 'ArrowDown') {
+            nextRow++;
+            handled = true;
+        } else if (e.key === 'ArrowUp') {
+            nextRow--;
+            handled = true;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            // Handle rack boundaries
+            let maxRows = RACK_ROWS[nextRack];
+            if (nextRow >= maxRows) {
+                if (currentRackIdx < rackNames.length - 1) {
+                    nextRack = rackNames[currentRackIdx + 1];
+                    nextRow = 0;
+                } else { return; }
+            } else if (nextRow < 0) {
+                if (currentRackIdx > 0) {
+                    nextRack = rackNames[currentRackIdx - 1];
+                    nextRow = RACK_ROWS[nextRack] - 1;
+                } else { return; }
+            }
+
+            let nextCellIdx = nextRow * 7 + nextCol;
+            let nextCage = cages.find(c => c.rackId === nextRack && c.cellIdx === nextCellIdx);
+            
+            if (nextCage) {
+                saveCage();
+                openEditModal(nextCage.id);
+            }
+        }
+    });
 </script>
 </body>
 </html>
