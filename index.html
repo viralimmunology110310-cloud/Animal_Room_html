@@ -349,7 +349,7 @@
         .splitter:hover, .splitter.dragging { background: rgba(255,255,255,0.2); }
 
         .sheet-pane {
-            width: var(--sheet-width, 420px); min-width: 250px; max-width: 1000px;
+            width: var(--sheet-width, 600px); min-width: 250px; max-width: 1000px;
             border-left: 1px solid var(--glass-border); background: #ffffff;
             display: flex; flex-direction: column; overflow: hidden;
             font-family: Arial, sans-serif; 
@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.12</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.13</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -470,7 +470,7 @@
                         <tr>
                             <th style="width:12px;"></th>
                             <th>No.</th><th>C.no.</th><th>Strain</th><th>male</th><th>female</th>
-                            <th>D.O.B</th><th>D.O.M</th><th>other</th><th>코드</th>
+                            <th>D.O.B</th><th>D.O.M</th><th>other</th>
                         </tr>
                     </thead>
                     <tbody id="mating-table-body"></tbody>
@@ -761,7 +761,7 @@
         }
     });
 
-    const APP_VERSION = "2026-05-31 19:27:14";
+    const APP_VERSION = "2026-05-31 19:34:47";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1641,7 +1641,8 @@ document.addEventListener('pointerdown', (e) => {
             else strainCNoM++;
             
             const isGDone = c.notes && c.notes.includes('G완');
-            const codeStr = isGDone ? '' : `${c.code || ''}${c.subId || ''}`;
+            const displayCode = isGDone ? `${c.code || ''}(G완)` : (c.code || '');
+            
             const mTxt = formatGeno(c.m_male_count, c.m_male_geno);
             const fTxt = formatGeno(c.m_female_count, c.m_female_geno);
             
@@ -1655,14 +1656,13 @@ document.addEventListener('pointerdown', (e) => {
             mHtml += `<tr id="row-mating-${c.id}">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
                 <td>${globalNoM++}</td>
-                <td>${strainCNoM}</td>
-                <td style="font-weight:bold;">${c.code || ''}</td>
+                <td>${c.subId || ''}</td>
+                <td style="font-weight:bold;">${displayCode}</td>
                 <td>${mTxt}</td>
                 <td>${fTxt}</td>
                 <td>${formatDateDots(youngerDob)}</td>
                 <td>${formatDateDots(c.dom)}</td>
                 <td style="color:${getNoteColor(c.notes)}; text-align:left;">${c.notes || ''}</td>
-                <td>${codeStr}</td>
             </tr>`;
         });
 
@@ -1671,8 +1671,7 @@ document.addEventListener('pointerdown', (e) => {
             if (isFirstStrain) { currentStrainCodeB = c.code; strainCNoB = 1; }
             else strainCNoB++;
             
-            const isGDone = c.notes && c.notes.includes('G완');
-            const codeStr = isGDone ? '' : `${c.code || ''}${c.subId || ''}`;
+            const codeStr = c.subId ? `${c.code || ''}${c.subId}` : '';
             let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
 
             bHtml += `<tr id="row-breeding-${c.id}">
@@ -1759,7 +1758,14 @@ document.addEventListener('pointerdown', (e) => {
             if (selectedIds.has(cage.id)) el.classList.add('selected'); else el.classList.remove('selected');
             setTimeout(() => {
                 const slot = slots[cage.cellIdx];
-                if (slot) { el.style.left = slot.offsetLeft+'px'; el.style.top = slot.offsetTop+'px'; }
+                if (slot) { 
+                    const x = cage.cellIdx % 7;
+                    const y = Math.floor(cage.cellIdx / 7);
+                    const cellSize = parseFloat(grid.style.getPropertyValue('--cell-size')) || 92;
+                    const cellGap = 10;
+                    el.style.left = (x * (cellSize + cellGap)) + 'px'; 
+                    el.style.top = (y * (cellSize + cellGap)) + 'px'; 
+                }
             }, 10);
         });
         updateStatsBar();
