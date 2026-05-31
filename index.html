@@ -636,6 +636,47 @@
         } catch(e) { editLog = []; }
     }
 
+    
+    function saveHistory() {
+        if (historyIndex < historyStack.length - 1) {
+            historyStack = historyStack.slice(0, historyIndex + 1);
+        }
+        historyStack.push({ cages: JSON.parse(JSON.stringify(cages)), logs: JSON.parse(JSON.stringify(editLog)) });
+        historyIndex++;
+        if (historyStack.length > 50) {
+            historyStack.shift();
+            historyIndex--;
+        }
+    }
+    
+    function undo() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            const state = historyStack[historyIndex];
+            cages = JSON.parse(JSON.stringify(state.cages));
+            editLog = JSON.parse(JSON.stringify(state.logs));
+            localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
+            refreshLogPanel();
+            renderMainBoard();
+            buildLeftSidebar();
+            debouncedSyncToSheet();
+        }
+    }
+    
+    function redo() {
+        if (historyIndex < historyStack.length - 1) {
+            historyIndex++;
+            const state = historyStack[historyIndex];
+            cages = JSON.parse(JSON.stringify(state.cages));
+            editLog = JSON.parse(JSON.stringify(state.logs));
+            localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
+            refreshLogPanel();
+            renderMainBoard();
+            buildLeftSidebar();
+            debouncedSyncToSheet();
+        }
+    }
+
     function saveLog() {
         try { localStorage.setItem(LOG_KEY, JSON.stringify(editLog)); } catch(e) {}
     }
@@ -1101,6 +1142,16 @@ document.addEventListener('pointerdown', (e) => {
             if (d < minD && d < 55) { minD = d; hoverIdx = parseInt(slot.dataset.idx); }
         });
         previewShift(hoverIdx);
+        
+        const trashZone = document.getElementById('trash-zone');
+        if (trashZone) {
+            trashZone.style.display = 'block';
+            if (e.clientY > window.innerHeight - 80) {
+                trashZone.style.background = 'rgba(255,0,0,1)';
+            } else {
+                trashZone.style.background = 'rgba(255,55,95,0.9)';
+            }
+        }
     }
 
     // ────────────────────────────────────────────────────────────────
