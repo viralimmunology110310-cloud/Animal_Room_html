@@ -351,7 +351,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.0</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.1</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -601,7 +601,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 18:00:04";
+    const APP_VERSION = "2026-05-31 18:05:08";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1049,7 +1049,7 @@ document.addEventListener('pointerdown', (e) => {
             if (batchMoveMode && selectedIds.has(cageId)) {
                 dragData.active = true; dragData.isDragging = false;
                 dragData.startX = e.clientX; dragData.startY = e.clientY;
-                dragData.primaryId = cageId; dragData.items = [];
+                dragData.primaryId = cageId; dragData.items = []; dragData.isCopy = (e.ctrlKey || e.metaKey);
                 const result = checkContiguous();
                 if (result.ok && result.cages.length > 0) {
                     const cur = result.cages.filter(c => c.rackId === currentRack).sort((a,b) => a.cellIdx - b.cellIdx);
@@ -1070,7 +1070,7 @@ document.addEventListener('pointerdown', (e) => {
 
             dragData.active = true; dragData.isDragging = false;
             dragData.startX = e.clientX; dragData.startY = e.clientY;
-            dragData.primaryId = cageId; dragData.items = [];
+            dragData.primaryId = cageId; dragData.items = []; dragData.isCopy = (e.ctrlKey || e.metaKey);
 
             if (!selectedIds.has(cageId)) {
                 clearSelection(); initSingleDrag(cageEl, cageId, e);
@@ -1147,7 +1147,7 @@ document.addEventListener('pointerdown', (e) => {
         const trashZone = document.getElementById('trash-zone');
         if (trashZone) {
             trashZone.style.display = 'block';
-            if (e.clientY > window.innerHeight - 80) {
+            if (e.clientY > window.innerHeight - 150) {
                 trashZone.style.background = 'rgba(255,0,0,1)';
             } else {
                 trashZone.style.background = 'rgba(255,55,95,0.9)';
@@ -1251,7 +1251,7 @@ document.addEventListener('pointerdown', (e) => {
         const trashZone = document.getElementById('trash-zone');
         if (trashZone) trashZone.style.display = 'none';
 
-        if (dragData.isDragging && e.clientY > window.innerHeight - 80) {
+        if (dragData.isDragging && e.clientY > window.innerHeight - 150) {
             dragData.active = false;
             document.removeEventListener('pointermove', onPointerMove);
             document.removeEventListener('pointerup', onPointerUp);
@@ -1311,22 +1311,40 @@ document.addEventListener('pointerdown', (e) => {
             const result = calculateShiftLogic(finalIdx);
             if (result) {
                 result.workCages.forEach(wc => { const t = cages.find(c => c.id === wc.id); if (t) t.cellIdx = wc.cellIdx; });
-                dragData.items.forEach((item, idx) => {
-                    const t = cages.find(c => c.id === item.id);
-                    if (t) {
-                        const fromRack = t.rackId, fromIdx = t.cellIdx;
-                        const toRack = currentRack, toIdx = result.blockTargetIdx + idx;
-                        t.rackId = toRack; t.cellIdx = toIdx;
-
-                        // 실제로 위치가 바뀐 경우에만 로그 기록
-                        if (fromRack !== toRack || fromIdx !== toIdx) {
-                            logAction('move',
-                                `Cage ${item.id} moved to Rack ${toRack} / slot ${toIdx}`,
-                                `from Rack ${fromRack} / slot ${fromIdx}`
-                            );
+                
+                if (dragData.isCopy) {
+                    let copiedCount = 0;
+                    dragData.items.forEach((item, idx) => {
+                        const originalCage = cages.find(c => c.id === item.id);
+                        if (originalCage) {
+                            let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                            let newCage = { ...originalCage, id: newId, rackId: currentRack, cellIdx: result.blockTargetIdx + idx };
+                            cages.push(newCage);
+                            logAction('create', `Cage ${newId} duplicated via drag`, `Rack ${currentRack} / slot ${newCage.cellIdx} — ${newCage.code}`);
+                            copiedCount++;
                         }
+                    });
+                    if (copiedCount > 0) {
+                        setTimeout(() => showCopyEffect(`✨ ${copiedCount}개 케이지 복제됨! ✨`), 100);
                     }
-                });
+                } else {
+                    dragData.items.forEach((item, idx) => {
+                        const t = cages.find(c => c.id === item.id);
+                        if (t) {
+                            const fromRack = t.rackId, fromIdx = t.cellIdx;
+                            const toRack = currentRack, toIdx = result.blockTargetIdx + idx;
+                            t.rackId = toRack; t.cellIdx = toIdx;
+
+                            // 실제로 위치가 바뀐 경우에만 로그 기록
+                            if (fromRack !== toRack || fromIdx !== toIdx) {
+                                logAction('move',
+                                    `Cage ${item.id} moved to Rack ${toRack} / slot ${toIdx}`,
+                                    `from Rack ${fromRack} / slot ${fromIdx}`
+                                );
+                            }
+                        }
+                    });
+                }
             }
         }
 
