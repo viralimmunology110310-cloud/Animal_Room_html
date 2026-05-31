@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.10</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.12</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -705,7 +705,63 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 19:19:44";
+    // ── System Initialization (Splitter & Resize) ───────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        const splitter = document.getElementById('pane-splitter');
+        const sheetPane = document.querySelector('.sheet-pane');
+        if (splitter && sheetPane) {
+            let isDragging = false;
+            let startX, startWidth;
+            
+            splitter.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startWidth = sheetPane.getBoundingClientRect().width;
+                splitter.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const diff = startX - e.clientX; // moving left increases right pane width
+                let newWidth = startWidth + diff;
+                newWidth = Math.max(250, Math.min(1000, newWidth)); // min 250, max 1000
+                sheetPane.style.setProperty('--sheet-width', newWidth + 'px');
+                sheetPane.style.width = newWidth + 'px';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    splitter.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                }
+            });
+        }
+
+        const boardPane = document.querySelector('.board-pane');
+        const grid = document.getElementById('main-grid');
+        if (boardPane && grid) {
+            new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const rect = entry.contentRect;
+                    // rect.width is boardPane width. Subtract padding (e.g. 30px on each side = 60px)
+                    const availableWidth = rect.width - 60;
+                    const cellGap = 10;
+                    let newSize = (availableWidth - (cellGap * 6)) / 7;
+                    newSize = Math.max(30, Math.min(92, newSize));
+                    grid.style.setProperty('--cell-size', newSize + 'px');
+                    
+                    if (window.cages && window.cages.length > 0) {
+                        renderCages(currentRack);
+                    }
+                }
+            }).observe(boardPane);
+        }
+    });
+
+    const APP_VERSION = "2026-05-31 19:27:14";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1559,7 +1615,25 @@ document.addEventListener('pointerdown', (e) => {
         }
 
         const matingCages = sortedCages.filter(c => c.type === 'mating');
-        const breedingCages = sortedCages.filter(c => c.type === 'breeding' || c.type === 'empty'); // Sentinels are excluded usually
+        const breedingCages = sortedCages.filter(c => c.type === 'breeding' || c.type === 'empty');
+
+        const sortFn = (a, b) => {
+            let aCode = a.code || ''; let bCode = b.code || '';
+            let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
+            let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
+            if (!aMatch || !bMatch) {
+                if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+                return aCode.localeCompare(bCode);
+            }
+            let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
+            if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
+            if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
+            let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
+            if (aNum !== bNum) return aNum - bNum;
+            return (parseInt(a.subId)||0) - (parseInt(b.subId)||0);
+        };
+        matingCages.sort(sortFn);
+        breedingCages.sort(sortFn);
 
         matingCages.forEach((c) => {
             const isFirstStrain = (c.code !== currentStrainCodeM);
