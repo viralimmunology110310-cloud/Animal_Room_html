@@ -1118,6 +1118,42 @@ document.addEventListener('pointerdown', (e) => {
 
     function onPointerUp(e) {
         if (!dragData.active) return;
+        
+        const trashZone = document.getElementById('trash-zone');
+        if (trashZone) trashZone.style.display = 'none';
+
+        if (dragData.isDragging && e.clientY > window.innerHeight - 80) {
+            dragData.active = false;
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            previewShift(-1);
+            
+            let deletedCount = 0;
+            const idsToDelete = new Set(dragData.items.map(i => i.id));
+            cages = cages.filter(c => {
+                if (idsToDelete.has(c.id)) {
+                    logAction('delete', `Cage ${c.id} deleted (drag to trash)`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
+                    deletedCount++;
+                    return false;
+                }
+                return true;
+            });
+            
+            dragData.items.forEach(item => {
+                item.el.remove();
+                const badge = document.getElementById('drag-badge'); if (badge) badge.remove();
+            });
+            
+            if (deletedCount > 0) {
+                selectedIds.clear(); selectedSlotIdxs.clear();
+                saveHistory();
+                renderMainBoard();
+                debouncedSyncToSheet();
+                showToast(`${deletedCount}개 케이지가 삭제되었습니다.`);
+            }
+            return;
+        }
+
         dragData.active = false;
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
