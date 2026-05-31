@@ -1547,6 +1547,7 @@ document.addEventListener('pointerdown', (e) => {
         syncTimeout = setTimeout(() => {
             syncToSheet();
         }, 3000); // 3초 뒤에 동기화
+    }
     let isDataLoaded = false;
 
     async function syncToSheet() {
