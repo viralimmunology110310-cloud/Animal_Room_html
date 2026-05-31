@@ -94,29 +94,13 @@
             border: 1px solid var(--glass-border); border-radius: 32px; padding: 25px;
             box-shadow: 0 30px 60px rgba(0,0,0,0.5); position: relative; width: fit-content;
         }
-        .grid-7 {
-            --cell-gap: 10px;
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            width: 100%; min-width: 320px; max-width: 704px; 
-            gap: var(--cell-gap);
-            position: relative; justify-content: center; margin: 0 auto;
-        }
+        
 
-        .slot {
-            width: 100%; aspect-ratio: 1/1; min-height: 40px; border-radius: 20px; background: var(--slot-bg);
-            border: 1px dashed var(--slot-border); position: relative;
-            display: flex; align-items: center; justify-content: center; box-sizing: border-box;
-        }
+        
         .slot::before { content: attr(data-label); font-size: 11px; color: rgba(255,255,255,0.1); font-weight: 600; }
         .slot.ghost-slot { border-color: rgba(255, 55, 95, 0.35); background: rgba(255, 55, 95, 0.02); }
 
-        .cage {
-            width: 100%; aspect-ratio: 1/1; min-height: 40px; border-radius: 20px; position: absolute;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.3); box-sizing: border-box;
-            cursor: grab; touch-action: none; z-index: 10;
-            transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
+        
         .cage.breeding { 
             background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 35%, #d1d1d6 50%, #e5e5ea 65%, #ffffff 100%);
             color: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.9); border-bottom: 2px solid #a1a1a6;
@@ -356,12 +340,88 @@
         .day-badge.Tue { background: #FF375F; }
         .day-badge.Wed { background: #34c759; }
 
+    
+        /* ─── Right Panel (Google Sheet View) ─── */
+        .splitter {
+            width: 8px; background: rgba(255,255,255,0.05); cursor: col-resize;
+            transition: background 0.2s; z-index: 100;
+        }
+        .splitter:hover, .splitter.dragging { background: rgba(255,255,255,0.2); }
+
+        .sheet-pane {
+            width: var(--sheet-width, 420px); min-width: 250px; max-width: 1000px;
+            border-left: 1px solid var(--glass-border); background: #ffffff;
+            display: flex; flex-direction: column; overflow: hidden;
+            font-family: Arial, sans-serif; 
+        }
+        .sheet-section {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #ffffff;
+        }
+        .sheet-header {
+            padding: 8px 12px; background: #ffffff; border-bottom: 1px solid #cccccc;
+            font-size: 14px; font-weight: bold; color: #000000; text-align: center;
+        }
+        .sheet-table-wrapper {
+            flex: 1; overflow-y: auto; overflow-x: auto; scroll-behavior: smooth; background: #ffffff;
+        }
+        .sheet-table {
+            border-collapse: collapse; font-size: 12px; text-align: center; color: #000000;
+            white-space: nowrap; width: max-content; min-width: 100%; font-family: Arial, sans-serif;
+            background: #ffffff;
+        }
+        .sheet-table th {
+            position: sticky; top: 0; background: #f3f3f3; padding: 6px 8px;
+            color: #000000; border: 1px solid #000000; border-top: none; z-index: 5;
+            font-weight: bold; text-align: center;
+        }
+        .sheet-table td {
+            padding: 4px 6px; border: 1px solid #000000; 
+            max-width: 150px; overflow: hidden; text-overflow: ellipsis; height: 21px;
+            color: #000000; background: #ffffff;
+        }
+        .sheet-table tr.inner-row td {
+            border-bottom: none; border-top: none;
+        }
+        .sheet-table tr.block-bottom td {
+            border-bottom: 1px solid #000000;
+        }
+        .sheet-table tr.highlighted-row td {
+            border-top: 2px solid #ff3b30 !important;
+            border-bottom: 2px solid #ff3b30 !important;
+        }
+        .sheet-table tr.highlighted-row td:first-child { border-left: 2px solid #ff3b30 !important; }
+        .sheet-table tr.highlighted-row td:last-child { border-right: 2px solid #ff3b30 !important; }
+        .sheet-table td.day-color-cell { padding: 0; width: 12px; border-right: none; }
+        .sheet-table td.no-col { border-left: none; }
+        
+        /* ─── Grid & Cage Resizing ─── */
+        .grid-7 {
+            --cell-size: 92px; /* dynamically updated by JS */
+            --cell-gap: 10px;
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            width: 100%; min-width: 320px; max-width: 704px; 
+            gap: var(--cell-gap);
+            position: relative; justify-content: center; margin: 0 auto;
+        }
+        .slot {
+            width: 100%; aspect-ratio: 1/1; border-radius: 20px; background: var(--slot-bg);
+            border: 1px dashed var(--slot-border); position: relative;
+            display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+        }
+        .cage {
+            width: var(--cell-size); height: var(--cell-size); border-radius: 20px; position: absolute;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.3); box-sizing: border-box;
+            cursor: grab; touch-action: none; z-index: 10;
+            transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.2s, height 0.2s;
+        }
+
     </style>
 </head>
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.8.2</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.9</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -645,7 +705,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 19:02:57";
+    const APP_VERSION = "2026-05-31 19:11:18";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
