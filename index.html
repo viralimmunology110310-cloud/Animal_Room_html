@@ -351,7 +351,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.1</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.2</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -477,6 +477,7 @@
                 <select id="m-type" class="form-control" onchange="toggleModalFields()">
                     <option value="breeding">Breeding (생산/유지용 — 흰색)</option>
                     <option value="mating">Mating (교배용 — 노란색)</option>
+                    <option value="sentinel">Sentinel (모니터링 — 초록색)</option>
                 </select>
             </div>
             <div class="form-group" style="flex:0.6;">
@@ -601,7 +602,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 18:05:08";
+    const APP_VERSION = "2026-05-31 18:11:54";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1575,6 +1576,11 @@ document.addEventListener('pointerdown', (e) => {
         const type = document.getElementById('m-type').value;
         document.getElementById('breeding-fields').style.display = type === 'breeding' ? 'block' : 'none';
         document.getElementById('mating-fields').style.display  = type === 'mating'   ? 'block' : 'none';
+        
+        const isSentinel = (type === 'sentinel');
+        document.getElementById('m-code').parentElement.style.display = isSentinel ? 'none' : 'block';
+        document.getElementById('m-sub').parentElement.style.display = isSentinel ? 'none' : 'block';
+        document.getElementById('genotype-display').style.display = isSentinel ? 'none' : 'block';
     }
 
     function closeModal() { modal.style.display = 'none'; }
@@ -1620,19 +1626,23 @@ document.addEventListener('pointerdown', (e) => {
             if (prev.bDob !== info.bDob) changed.push(`DOB: ${prev.bDob||'—'}→${info.bDob||'—'}`);
 
             Object.assign(prev, info);
-            logAction('edit',
-                `Cage ${id} edited`,
-                changed.length ? changed.join('\n') : 'no field change detected'
-            );
+            if (info.type !== 'sentinel') {
+                logAction('edit',
+                    `Cage ${id} edited`,
+                    changed.length ? changed.join('\n') : 'no field change detected'
+                );
+            }
         } else {
             const newId = 'c_' + Date.now();
             if (info.notes) info.noteUpdated = Date.now();
             cages.push({ id: newId, rackId: currentRack, cellIdx: targetSlotIdxForCreate, ...info });
         saveHistory();
-            logAction('create',
-                `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
-                `${info.code}${info.subId} (${info.type})`
-            );
+            if (info.type !== 'sentinel') {
+                logAction('create',
+                    `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
+                    `${info.code}${info.subId} (${info.type})`
+                );
+            }
         }
         closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
