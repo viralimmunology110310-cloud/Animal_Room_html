@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Small Animal Room</title>
+    <style>
+        :root {
+            --breeding-color: #ffffff;
+            --mating-color: #ffd60a;
+            --glass-panel: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --slot-bg: rgba(255, 255, 255, 0.02);
+            --slot-border: rgba(255, 255, 255, 0.15);
+            --text-main: #ffffff;
+            --text-sub: #8e8e93;
+        }
+
+        body {
+            margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            background: radial-gradient(circle at 50% 30%, #1e1e2f, #000000 85%);
+            color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            -webkit-user-select: none; user-select: none;
+        }
+
+        header {
+            padding: 15px 30px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--glass-border); background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(40px);
+            box-sizing: border-box; height: 65px;
+        }
+        header h1 { margin: 0; font-size: 24px; font-weight: 700; background: linear-gradient(90deg, #fff, #a1a1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .top-right { display: flex; align-items: center; gap: 8px; }
+        .progress-container { width: 180px; background: rgba(255,255,255,0.1); height: 10px; border-radius: 5px; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #ff9500, #ffcc00); width: 0%; transition: width 0.3s; }
+        .progress-text { font-size: 13px; color: var(--text-sub); font-weight: 600; white-space: nowrap; }
+        
+        .header-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: white; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; white-space: nowrap; }
+        .header-btn:hover { background: rgba(255,255,255,0.15); }
+        .header-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+        .workspace { flex: 1; display: flex; overflow: hidden; }
+
+        .map-nav {
+            width: 300px; border-right: 1px solid var(--glass-border); padding: 25px 20px;
+            display: flex; flex-direction: column; gap: 20px; background: rgba(0,0,0,0.3); overflow-y: auto;
+        }
+        .section-title { font-size: 13px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        
+        .config-box { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 16px; padding: 15px; }
+        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px; }
+        .config-row:last-child { margin-bottom: 0; }
+        .config-input { width: 50px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px; border-radius: 6px; text-align: center; }
+
+        .room-map {
+            position: relative; width: 100%; height: 360px;
+            margin-top: auto; margin-bottom: 0;
+            background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border);
+            border-radius: 24px; box-sizing: border-box; overflow: hidden;
+        }
+
+        .map-rack {
+            position: absolute;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s;
+        }
+        .map-rack.active { border-color: #ffcc00; background: rgba(255, 204, 0, 0.08); box-shadow: 0 0 15px rgba(255,204,0,0.2); }
+        .map-rack.drag-over { background: rgba(52, 199, 89, 0.15); border-color: #34c759; transform: scale(1.03); }
+
+        .rack-A { top: 15px; left: 15px; width: 80px; height: 110px; }
+        .rack-B { top: 15px; right: 15px; width: 80px; height: 110px; }
+        .rack-C { top: 140px; left: 15px; width: 80px; height: 110px; }
+        .change-station {
+            position: absolute; top: 140px; right: 15px; width: 80px; height: 110px;
+            border: 1px dashed rgba(255,255,255,0.12); background: rgba(255,255,255,0.01);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: var(--text-sub); text-align: center; line-height: 1.4; font-weight: 600;
+        }
+        .rack-D { top: 265px; left: 85px; width: 180px; height: 32px; }
+        .rack-E { top: 310px; left: 85px; width: 180px; height: 32px; }
+
+        .board-pane { flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; overflow: auto; box-sizing: border-box; }
+        .board-header { margin-bottom: 20px; }
+        .board-title { font-size: 26px; font-weight: 700; margin: 0; }
+        .board-desc { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+
+        .grid-container {
+            background: var(--glass-panel); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border); border-radius: 32px; padding: 25px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5); position: relative; width: fit-content;
+        }
+        .grid-7 { display: grid; grid-template-columns: repeat(7, 92px); gap: 14px; position: relative; }
+
+        .slot {
+            width: 92px; height: 92px; border-radius: 24px; background: var(--slot-bg);
+            border: 1px dashed var(--slot-border); position: relative;
+            display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+        }
+        .slot::before { content: attr(data-label); font-size: 11px; color: rgba(255,255,255,0.1); font-weight: 600; }
+        .slot.ghost-slot { border-color: rgba(255, 55, 95, 0.35); background: rgba(255, 55, 95, 0.02); }
+
+        .cage {
+            width: 92px; height: 92px; border-radius: 24px; position: absolute;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.3); box-sizing: border-box;
+            cursor: grab; touch-action: none; z-index: 10;
+            transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .cage.breeding { 
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f5 35%, #d1d1d6 50%, #e5e5ea 65%, #ffffff 100%);
+            color: #1c1c1e; border: 1px solid rgba(255, 255, 255, 0.9); border-bottom: 2px solid #a1a1a6;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 5px 15px rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        .cage.mating { 
+            background: linear-gradient(135deg, #ffeb66 0%, #ffd60a 35%, #e0b400 50%, #ffd60a 65%, #ffdf33 100%);
+            color: #1c1c1e; border: 1px solid rgba(255, 235, 102, 0.9); border-bottom: 2px solid #b38e00;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 5px 15px rgba(255, 214, 10, 0.1), 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        .cage.floating {
+            cursor: grabbing; z-index: 9999 !important;
+            transform: scale(1.1) translateY(-4px); box-shadow: 0 25px 45px rgba(0,0,0,0.6);
+            pointer-events: none; position: fixed !important; left: 0; top: 0; margin: 0 !important;
+            transition: none !important; 
+        }
+
+        .strain-code { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }
+        .sub-id { font-size: 12px; font-weight: 700; margin-top: 5px; background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 6px; }
+
+        /* ─── Side panels ─── */
+        .side-panel {
+            position: fixed; top: 0; right: -520px; width: 480px; height: 100vh;
+            background: rgba(25, 25, 30, 0.92); backdrop-filter: blur(40px); border-left: 1px solid var(--glass-border);
+            z-index: 1500; padding: 40px 28px; box-shadow: -20px 0 40px rgba(0,0,0,0.5);
+            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-sizing: border-box; overflow-y: auto;
+        }
+        .side-panel.open { right: 0; }
+        .side-panel h2 { font-size: 22px; margin-top: 0; margin-bottom: 25px; }
+        .match-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+        /* ─── Modal — wider ─── */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal {
+            background: rgba(28, 28, 35, 0.97); border: 1px solid var(--glass-border); border-radius: 28px;
+            /* ✅ 수정: 너비 600px으로 확장, 최대높이 제한 + 스크롤 */
+            width: 620px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+            padding: 35px 40px; box-shadow: 0 40px 80px rgba(0,0,0,0.6); box-sizing: border-box;
+        }
+        .modal::-webkit-scrollbar { width: 6px; }
+        .modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        
+        .modal h2 { margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 700; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600; }
+        .form-control {
+            width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.3); color: white; font-size: 14px; box-sizing: border-box;
+        }
+        .form-row { display: flex; gap: 12px; }
+
+        .nav-arrow {
+            position: absolute; width: 36px; height: 36px; background: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.9); border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-size: 16px; transition: all 0.2s; user-select: none; z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-arrow:hover { background: rgba(255, 255, 255, 0.3); color: #fff; }
+        .nav-up { top: 10px; left: 50%; transform: translateX(-50%); }
+        .nav-up:hover { transform: translateX(-50%) scale(1.1); }
+        .nav-down { bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .nav-down:hover { transform: translateX(-50%) scale(1.1); }
+        .nav-left { left: 10px; top: 50%; transform: translateY(-50%); z-index: 110; }
+        .nav-left:hover { transform: translateY(-50%) scale(1.1); }
+        .nav-right { right: 10px; top: 50%; transform: translateY(-50%); z-index: 110; }
+        .nav-right:hover { transform: translateY(-50%) scale(1.1); }
+        @media (max-width: 600px) {
+            .nav-left { left: 10px; top: unset; bottom: 10px; transform: none; }
+            .nav-left:hover { transform: scale(1.1); }
+            .nav-right { right: 10px; top: unset; bottom: 10px; transform: none; }
+            .nav-right:hover { transform: scale(1.1); }
+            .nav-up { top: 10px; left: unset; right: 60px; transform: none; }
+            .nav-up:hover { transform: scale(1.1); }
+            .nav-down { bottom: unset; top: 10px; left: unset; right: 10px; transform: none; }
+            .nav-down:hover { transform: scale(1.1); }
+        }
+
+        .modal-btns { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; flex-wrap: wrap; }
+        .btn { padding: 11px 18px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
+        .btn-save { background: #ffcc00; color: #1c1c1e; }
+        .btn-delete { background: #FF375F; color: white; margin-right: auto; }
+        .btn-log-view { background: rgba(255,255,255,0.07); color: var(--text-sub); border: 1px solid var(--glass-border); }
+        .btn-log-view:hover { background: rgba(255,255,255,0.13); color: white; }
+
+        .btn-today {
+            background: rgba(10, 132, 255, 0.15); color: #0a84ff; border: 1px solid rgba(10, 132, 255, 0.3);
+            border-radius: 8px; padding: 0 10px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap;
+        }
+        .btn-today:hover { background: #0a84ff; color: white; }
+
+        /* ─── Mating / Breeding field panels ─── */
+        #mating-fields {
+            display:none; background:rgba(255,214,10,0.05); padding:16px;
+            border-radius:12px; border:1px solid rgba(255,214,10,0.2); margin-bottom:14px;
+        }
+        #breeding-fields {
+            display:none; background:rgba(255,255,255,0.04); padding:16px;
+            border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom:14px;
+        }
+
+        /* ─── Selection marquee ─── */
+        #selection-marquee {
+            position: fixed; display: none; z-index: 9999; pointer-events: none;
+            background: rgba(10, 132, 255, 0.2); border: 1px solid rgba(10, 132, 255, 0.8);
+            border-radius: 4px; backdrop-filter: blur(2px);
+        }
+        .cage.selected {
+            filter: brightness(0.4) saturate(1.2); border: 2px solid #FF375F !important;
+            transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 55, 95, 0.4);
+        }
+        .drag-badge {
+            position: absolute; top: -10px; right: -10px;
+            background: #FF375F; color: white; font-size: 14px; font-weight: bold;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(255, 55, 95, 0.5); z-index: 10000;
+        }
+
+        /* ─── Batch bar ─── */
+        .batch-bar {
+            position: fixed; bottom: -120px; left: 50%; transform: translateX(-50%);
+            background: rgba(28, 28, 35, 0.95); backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 15px 25px; display: flex; align-items: center; gap: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); z-index: 3000;
+            transition: bottom 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); white-space: nowrap;
+        }
+        .batch-bar.show { bottom: 40px; }
+        .batch-count { font-weight: 700; color: #ffcc00; font-size: 15px; letter-spacing: -0.5px; }
+
+        .contiguous-badge {
+            font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: flex; align-items: center; gap: 5px;
+        }
+        .contiguous-badge.ok { background: rgba(52, 199, 89, 0.2); color: #34c759; border: 1px solid rgba(52,199,89,0.4); }
+        .contiguous-badge.ng { background: rgba(255, 55, 95, 0.15); color: #FF375F; border: 1px solid rgba(255,55,95,0.3); }
+
+        .btn-active {
+            background: #0a84ff !important; color: white !important;
+            border-color: #0a84ff !important; box-shadow: 0 0 15px rgba(10, 132, 255, 0.4);
+        }
+        body.batch-mode .cage { transition: filter 0.3s, transform 0.3s; }
+        body.batch-mode .cage:not(.selected) { filter: brightness(0.4) opacity(0.6); transform: scale(0.95); }
+
+        /* ─── Overflow alert ─── */
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: 8000; pointer-events: none;
+            background: repeating-linear-gradient(-45deg, rgba(255,38,38,0.18) 0px, rgba(255,38,38,0.18) 18px, transparent 18px, transparent 36px);
+            opacity: 0; transition: opacity 0.15s ease;
+        }
+        body.overflow-alert::before { animation: stripeFlash 1.1s ease-in-out infinite; }
+        @keyframes stripeFlash { 0%,100%{opacity:0;} 45%,55%{opacity:1;} }
+
+        #overflow-banner {
+            position: fixed; top: 65px; left: 0; right: 0; z-index: 7000;
+            background: linear-gradient(90deg,#c0001a,#ff2b2b,#c0001a); background-size: 200% 100%;
+            animation: bannerSlide 2.5s linear infinite; color: white; font-size: 13px; font-weight: 700;
+            padding: 0 24px; height: 0; overflow: hidden; display: flex; align-items: center; justify-content: space-between;
+            transition: height 0.3s cubic-bezier(0.2,0.8,0.2,1); box-shadow: 0 4px 20px rgba(255,0,0,0.4);
+        }
+        #overflow-banner.show { height: 42px; }
+        @keyframes bannerSlide { 0%{background-position:0% 0%;} 100%{background-position:200% 0%;} }
+        #overflow-banner .banner-left { display:flex; align-items:center; gap:10px; }
+        #overflow-banner .banner-icon { font-size:16px; animation:iconBlink 1.1s ease-in-out infinite; }
+        @keyframes iconBlink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        #overflow-banner .banner-racks { background:rgba(255,255,255,0.2); border-radius:6px; padding:2px 8px; font-size:12px; }
+        #overflow-banner .banner-btns { display:flex; gap:8px; }
+        #overflow-banner .banner-btn { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:white; padding:4px 12px; border-radius:7px; cursor:pointer; font-size:12px; font-weight:700; }
+        #overflow-banner .banner-btn.go { background:white; color:#c0001a; }
+
+        .slot.ghost-slot { animation: ghostPulse 1.1s ease-in-out infinite; }
+        @keyframes ghostPulse {
+            0%,100%{border-color:rgba(255,55,95,0.4);background:rgba(255,55,95,0.03);}
+            50%{border-color:rgba(255,55,95,0.9);background:rgba(255,55,95,0.12);}
+        }
+        body.overflow-alert header { border-bottom-color: rgba(255,38,38,0.6); }
+
+        /* ─── Edit Log Panel ─── */
+        #log-panel {
+            position: fixed; top: 0; left: -500px; width: 460px; height: 100vh;
+            background: rgba(15,15,22,0.97); backdrop-filter: blur(40px);
+            border-right: 1px solid var(--glass-border); z-index: 1500;
+            padding: 36px 28px; box-shadow: 20px 0 40px rgba(0,0,0,0.5);
+            transition: left 0.3s cubic-bezier(0.16,1,0.3,1); box-sizing: border-box; display: flex; flex-direction: column;
+        }
+        #log-panel.open { left: 0; }
+        #log-panel h2 { font-size: 20px; margin: 0 0 6px 0; }
+        #log-panel .log-sub { font-size: 12px; color: var(--text-sub); margin-bottom: 20px; }
+        #log-list {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+            -webkit-user-select: text; user-select: text;
+        }
+        #log-list::-webkit-scrollbar { width: 5px; }
+        #log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius:3px; }
+        .log-entry {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 12px 14px;
+        }
+        .log-entry .log-time { font-size: 10px; color: var(--text-sub); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 4px; }
+        .log-entry .log-action { font-size: 13px; color: white; font-weight: 500; }
+        .log-entry .log-detail { font-size: 11px; color: #a1a1a6; margin-top: 3px; font-family: "SF Mono", monospace; white-space: pre-wrap; line-height: 1.4; }
+        .log-entry.type-edit .log-action::before { content: '[수정] '; }
+        .log-entry.type-delete .log-action::before { content: '[삭제] '; }
+        .log-entry.type-create .log-action::before { content: '[생성] '; }
+        .log-entry.type-move .log-action::before { content: '[이동] '; }
+        .log-empty { color: var(--text-sub); font-size: 13px; text-align: center; margin-top: 40px; }
+        
+        .log-empty { color: var(--text-sub); font-size: 13px; text-align: center; margin-top: 40px; }
+        .log-panel-footer { margin-top: 16px; display: flex; gap: 10px; }
+
+        /* ─── Day Panel ─── */
+        #day-panel {
+            position: fixed; top: 0; right: -600px; width: 560px; height: 100vh;
+            background: rgba(25, 25, 30, 0.95); backdrop-filter: blur(40px); border-left: 1px solid var(--glass-border);
+            z-index: 1500; padding: 40px 28px; box-shadow: -20px 0 40px rgba(0,0,0,0.5);
+            transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-sizing: border-box; display: flex; flex-direction: column;
+        }
+        #day-panel.open { right: 0; }
+        .day-columns { display: flex; gap: 10px; flex: 1; min-height: 200px; margin-bottom: 20px; }
+        .day-col { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
+        .day-col-title { font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .day-list { flex: 1; min-height: 100px; overflow-y: auto; padding-bottom: 10px; }
+        .strain-item { background: rgba(255,255,255,0.1); padding: 8px; margin-bottom: 6px; border-radius: 8px; font-size: 13px; cursor: grab; font-weight: 600; display: flex; justify-content: space-between; }
+        .strain-item:active { cursor: grabbing; }
+
+        /* Day Badge */
+        .day-badge {
+            position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 20; border: 2px solid #1c1c1e;
+        }
+        .day-badge.Mon { background: #0a84ff; }
+        .day-badge.Tue { background: #FF375F; }
+        .day-badge.Wed { background: #34c759; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px;">v1.0</span></h1>
+    <div class="top-right">
+        <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
+        <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
+        <button class="header-btn" id="btn-sync" onclick="manualSync()">🔄 동기화</button>
+        <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
+        <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 일괄 선택</button>
+        
+        <button class="header-btn" onclick="openDayPanel()">📅 요일 배정</button>
+        <button class="header-btn" onclick="openMatchPanel(event)">🧬 Strain 매칭표</button>
+
+    </div>
+</header>
+
+<div class="workspace">
+    <div class="map-nav">
+        <div class="section-title">랙 줄 수 세부 설정</div>
+        <div class="config-box" id="config-box"></div>
+        <div style="border-bottom: 1px solid var(--glass-border); margin: 5px 0;"></div>
+        <div class="section-title">연구실 배치 도면 (클릭하여 전환)</div>
+        <div class="room-map" id="room-map">
+            <div class="map-rack rack-A" data-rack="A" id="map-A">A</div>
+            <div class="map-rack rack-B" data-rack="B" id="map-B">B</div>
+            <div class="map-rack rack-C" data-rack="C" id="map-C">C</div>
+            <div class="map-rack rack-D" data-rack="D" id="map-D">D</div>
+            <div class="map-rack rack-E" data-rack="E" id="map-E">E</div>
+            <div class="change-station">Change<br>Station</div>
+        </div>
+    </div>
+
+    <div class="board-pane">
+        <div class="board-header">
+            <h2 class="board-title" id="current-rack-title">Rack A</h2>
+            <div class="board-desc" id="current-rack-desc">계산 중...</div>
+        </div>
+        <div class="grid-container">
+            <div class="grid-7" id="main-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Strain panel -->
+<div class="side-panel" id="match-panel">
+    <h2>🧬 Strain 기호 커스텀</h2>
+    <p style="font-size:12px; color:var(--text-sub); margin-bottom:20px;">기호 알파벳과 Strain 명칭을 자유롭게 추가하고 수정하세요.</p>
+    <div id="mapping-list" style="margin-bottom:15px;"></div>
+    <button class="header-btn" style="width:100%;margin-bottom:10px;background:rgba(255,255,255,0.1);" onclick="addStrainRow()">+ 기호 추가</button>
+    <button class="header-btn" style="width:100%;background:#ffcc00;color:#1c1c1e;" onclick="saveAndCloseMatchPanel()">설정 완료</button>
+</div>
+
+
+<!-- Day panel -->
+<div id="day-panel">
+    <h2>📅 Mating 요일 배정 (월/화/수)</h2>
+    <p style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">Strain 항목을 드래그하여 각 요일에 배치하세요.</p>
+    
+    <div class="day-columns">
+        <div class="day-col">
+            <div class="day-col-title" style="color:#0a84ff;">월요일</div>
+            <div class="day-list" id="day-list-Mon" data-day="Mon"></div>
+        </div>
+        <div class="day-col">
+            <div class="day-col-title" style="color:#FF375F;">화요일</div>
+            <div class="day-list" id="day-list-Tue" data-day="Tue"></div>
+        </div>
+        <div class="day-col">
+            <div class="day-col-title" style="color:#34c759;">수요일</div>
+            <div class="day-list" id="day-list-Wed" data-day="Wed"></div>
+        </div>
+        <div class="day-col">
+            <div class="day-col-title" style="color:#8e8e93;">미배정</div>
+            <div class="day-list" id="day-list-None" data-day="None"></div>
+        </div>
+    </div>
+
+    <div class="config-box" style="margin-bottom:20px;">
+        <div style="font-size:13px; font-weight:bold; margin-bottom:10px; color:#ffcc00;">WT (G) 요일 배정 예외 범위</div>
+        <div class="config-row" style="justify-content: flex-start; gap: 10px;">
+            <span style="color:#0a84ff;font-weight:bold;min-width:55px; white-space:nowrap;">월요일:</span>
+            G <input type="number" id="wt-mon-min" class="config-input"> ~ 
+            G <input type="number" id="wt-mon-max" class="config-input">
+        </div>
+        <div class="config-row" style="justify-content: flex-start; gap: 10px;">
+            <span style="color:#FF375F;font-weight:bold;min-width:55px; white-space:nowrap;">화요일:</span>
+            G <input type="number" id="wt-tue-min" class="config-input"> ~ 
+            G <input type="number" id="wt-tue-max" class="config-input">
+        </div>
+        <div class="config-row" style="justify-content: flex-start; gap: 10px;">
+            <span style="color:#34c759;font-weight:bold;min-width:55px; white-space:nowrap;">수요일:</span>
+            G <input type="number" id="wt-wed-min" class="config-input"> ~ 
+            G <input type="number" id="wt-wed-max" class="config-input">
+        </div>
+    </div>
+
+    <button class="header-btn" style="width:100%;background:#ffcc00;color:#1c1c1e;" onclick="saveAndCloseDayPanel()">저장 및 닫기</button>
+</div>
+
+<!-- Edit Log Panel -->
+
+<div id="log-panel">
+    <h2>📋 수정 로그</h2>
+    <div class="log-sub" id="log-sub-count">총 0건의 기록</div>
+    <div id="log-list"><div class="log-empty">아직 수정 내역이 없습니다.</div></div><div class="log-panel-footer">
+        <button class="header-btn" style="flex:1; background: rgba(255,55,95,0.2); color:#FF375F; border-color:#FF375F;" onclick="clearLogsSite()">🗑️ 전체 기록 초기화</button>
+        <button class="header-btn" style="flex:1; background: rgba(255,255,255,0.1);" onclick="downloadLog()">💾 텍스트 다운로드</button>
+        <button class="header-btn" style="flex:1;" onclick="closeLogPanel()">닫기</button>
+    </div></div>
+
+<!-- Cage modal -->
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+
+        <div class="nav-arrow nav-up" onclick="navigateModal('up')">▲</div>
+        <div class="nav-arrow nav-down" onclick="navigateModal('down')">▼</div>
+        <div class="nav-arrow nav-left" onclick="navigateModal('left')">◀</div>
+        <div class="nav-arrow nav-right" onclick="navigateModal('right')">▶</div>
+        <h2 id="modal-title">
+케이지 관리</h2>
+        <input type="hidden" id="m-id">
+        
+        <div class="form-row">
+            <div class="form-group" style="flex:1.2;">
+                <label>용도 구분 (Mating / Breeding)</label>
+                <select id="m-type" class="form-control" onchange="toggleModalFields()">
+                    <option value="breeding">Breeding (생산/유지용 — 흰색)</option>
+                    <option value="mating">Mating (교배용 — 노란색)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:0.6;">
+                <label>알파벳 기호</label>
+                <input type="text" id="m-code" class="form-control" placeholder="A, C" oninput="updateGenotypeDisplay()" maxlength="4">
+            </div>
+            <div class="form-group" style="flex:0.6;">
+                <label>케이지 번호</label>
+                <input type="text" id="m-sub" class="form-control" placeholder="52">
+            </div>
+        </div>
+
+        <div id="genotype-display" style="font-size:12px; color:#ffcc00; margin:-6px 0 14px; font-weight:600;">Genotype: 기호를 입력하세요</div>
+
+        <!-- Mating fields -->
+        <div id="mating-fields">
+            <div class="form-group">
+                <label>DOM (교배일)</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="date" id="m-dom" class="form-control">
+                    <button type="button" class="btn-today" onclick="setToday('m-dom')">Today</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:16px;">
+                <div style="flex:1;border-right:1px solid rgba(255,255,255,0.1);padding-right:16px;">
+                    <div style="color:#0a84ff;font-size:13px;font-weight:700;margin-bottom:10px;">수컷 정보 (♂)</div>
+                    <div class="form-group">
+                        <label>마리수</label>
+                        <input type="number" id="m-male-count" class="form-control" placeholder="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Genotype</label>
+                        <input type="text" id="m-male-geno" class="form-control" placeholder="수컷 Genotype">
+                    </div>
+                    <div class="form-group">
+                        <label>DOB</label>
+                        <div style="display:flex;gap:5px;">
+                            <input type="date" id="m-male-dob" class="form-control">
+                            <button type="button" class="btn-today" onclick="setToday('m-male-dob')">T</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <div style="color:#FF375F;font-size:13px;font-weight:700;margin-bottom:10px;">암컷 정보 (♀)</div>
+                    <div class="form-group">
+                        <label>마리수</label>
+                        <input type="number" id="m-female-count" class="form-control" placeholder="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Genotype</label>
+                        <input type="text" id="m-female-geno" class="form-control" placeholder="암컷 Genotype">
+                    </div>
+                    <div class="form-group">
+                        <label>DOB</label>
+                        <div style="display:flex;gap:5px;">
+                            <input type="date" id="m-female-dob" class="form-control">
+                            <button type="button" class="btn-today" onclick="setToday('m-female-dob')">T</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Breeding fields -->
+        <div id="breeding-fields">
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>성별</label>
+                    <select id="b-gender" class="form-control">
+                        <option value="male">수컷 (♂)</option>
+                        <option value="female">암컷 (♀)</option>
+                        <option value="mixed">암수혼합</option>
+                        <option value="unknown">미상</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>마리수</label>
+                    <input type="number" id="b-count" class="form-control" min="0" value="1">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>DOB (출생일)</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="date" id="b-dob" class="form-control">
+                    <button type="button" class="btn-today" onclick="setToday('b-dob')">Today</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>특이사항 (Notes)</label>
+            <textarea id="m-notes" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <div class="modal-btns">
+            <button class="btn btn-delete" id="btn-delete" onclick="deleteCage()">삭제</button>
+            <button class="btn btn-cancel" onclick="closeModal()">취소</button>
+            <button class="btn btn-save" id="btn-save" onclick="saveCage()">적용</button>
+        </div>
+    </div>
+</div>
+
+<div id="selection-marquee"></div>
+
+<div id="overflow-banner">
+    <div class="banner-left">
+        <span class="banner-icon">🚨</span>
+        <span>랙 용량 초과 — 삐져나온 케이지를 먼저 해결하세요</span>
+        <span class="banner-racks" id="banner-racks"></span>
+    </div>
+    <div class="banner-btns">
+        <button class="banner-btn go" onclick="goToNextOverflowRack()">📍 해당 랙으로</button>
+    </div>
+</div>
+
+<div class="batch-bar" id="batch-bar">
+    <span class="batch-count" id="batch-count">0개 선택됨</span>
+    <span class="contiguous-badge" id="contiguous-badge"></span>
+    <button class="header-btn" style="background:rgba(255,255,255,0.1);" onclick="clearSelection()">선택 해제</button>
+    <button class="header-btn" id="btn-batch-move" style="background:#0a84ff;border-color:#0a84ff;" onclick="startBatchMove()">🚚 일괄 이동</button>
+    <button class="header-btn" style="background:#FF375F;border-color:#FF375F;" onclick="deleteSelectedCages()">🗑️ 일괄 삭제</button>
+</div>
+
+<script>
+    let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
+    let currentRack = 'A';
+    let STRAIN_MAP = {
+        'A': { name: 'K18-ACE2', g_done: false }, 'C': { name: 'AIM2', g_done: true }, 'D': { name: 'Casp1', g_done: true }, 
+        'F': { name: 'IFnar1', g_done: true }, 'G': { name: 'WT', g_done: true }, 'H': { name: 'Nlrp3', g_done: true }, 
+        'I': { name: 'Nlrp12', g_done: true }, 'J': { name: 'Mefv', g_done: true }, 'K': { name: 'ZBP1', g_done: true }, 
+        'L': { name: 'IFnlr1', g_done: true }, 'M': { name: 'IFngr1', g_done: true }, 'N': { name: 'Nlrc4', g_done: true }, 
+        'P': { name: 'IL-10', g_done: true }, 'Q': { name: 'Nlrp10', g_done: true }, 'R': { name: 'Nlrc3', g_done: true }, 
+        'U': { name: 'LysMCre', g_done: false },
+        'AA': { name: 'Nlrp1abc', g_done: true }, 'AB': { name: 'Nlrp2', g_done: true }, 'AC': { name: 'Nlrp4a', g_done: true }, 
+        'AD': { name: 'Nlrp4b', g_done: false }, 'AE': { name: 'Nlrp5 flox', g_done: false }, 'AF': { name: 'Nlrp6', g_done: false }, 
+        'AG': { name: 'hNlrp8', g_done: false }, 'AH': { name: 'Nlrp9b', g_done: true }, 'AI': { name: 'hNlrp11', g_done: false }, 
+        'AJ': { name: 'hNlrp13', g_done: false }, 'AK': { name: 'Nlrp14', g_done: false }, 'AL': { name: 'Nlrx1', g_done: true }, 
+        'AN': { name: 'cGAS', g_done: true }, 'AO': { name: 'Rigi', g_done: false }, 'AP': { name: 'Ifih1', g_done: false }, 
+        'AQ': { name: 'NOD1', g_done: false }, 'AR': { name: 'NOD2', g_done: true }, 'AS': { name: 'JunD', g_done: false }, 
+        'AT': { name: 'CD163', g_done: false }, 'AU': { name: 'Nlrc5', g_done: false },
+        'FM': { name: 'IFnar1*IFngr1 dKO', g_done: false }, 'PS': { name: 'IL-10*K18 dKO', g_done: false }, 
+        'QK': { name: 'Nlrp10*ZBP1', g_done: false },
+        'AHH': { name: 'Nlrp3*K18 dKO', g_done: false },
+        'IHIH': { name: 'Nlrp3*Nlrp12 dKO', g_done: true },
+        'KRKR': { name: 'ZBP1*K18 dKO', g_done: false }, 
+        'QIQI': { name: 'Nlrp12*K18 dKO', g_done: false }        
+    };
+
+    // ── Edit log (localStorage 영구 저장) ────────
+    const LOG_KEY = 'smartRackEditLog';
+    let editLog = [];
+
+    function loadLog() {
+        try {
+            const raw = localStorage.getItem(LOG_KEY);
+            editLog = raw ? JSON.parse(raw) : [];
+        } catch(e) { editLog = []; }
+    }
+
+    function saveLog() {
+        try { localStorage.setItem(LOG_KEY, JSON.stringify(editLog)); } catch(e) {}
+    }
+
+    // edit 타입에서 변경사항이 없으면 기록하지 않음
+    function logAction(type, action, detail = '') {
+        if (type === 'edit' && (!detail || detail === 'no field change detected')) return;
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}  ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        editLog.unshift({ ts, type, action, detail });
+        saveLog();
+        refreshLogPanel();
+    }
+
+    function refreshLogPanel() {
+        const list = document.getElementById('log-list');
+        document.getElementById('log-sub-count').innerText = `총 ${editLog.length}건의 기록 (영구 저장됨)`;
+        if (editLog.length === 0) {
+            list.innerHTML = '<div class="log-empty">아직 수정 내역이 없습니다.</div>';
+            return;
+        }
+        list.innerHTML = editLog.map(e => `
+            <div class="log-entry type-${e.type}">
+                <div class="log-time">${e.ts}</div>
+                <div class="log-action">${e.action}</div>
+                ${e.detail ? `<div class="log-detail">${e.detail}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function openLogPanel() {
+        closeModal();
+        refreshLogPanel();
+        document.getElementById('log-panel').classList.add('open');
+    }
+    function closeLogPanel() { document.getElementById('log-panel').classList.remove('open'); }
+
+    loadLog();
+
+    // ── Data ──────────────────────────────────────
+    
+    let dayMap = {
+        'A': 'Mon', 'C': 'Mon', 'H': 'Mon', 'K': 'Mon', 'N': 'Mon', 'R': 'Mon', 'U': 'Mon', 'AF': 'Mon', 'AI': 'Mon', 'AO': 'Mon', 'AQ': 'Mon', 'AU': 'Mon', 'AH': 'Mon', 'AHH': 'Mon', 'IHIH': 'Mon',
+        'D': 'Tue', 'I': 'Tue', 'L': 'Tue', 'P': 'Tue', 'AA': 'Tue', 'AB': 'Tue', 'AK': 'Tue', 'AG': 'Tue', 'AJ': 'Tue', 'AP': 'Tue', 'AS': 'Tue', 'QIQI': 'Tue', 'FM': 'Tue', 'PS': 'Tue',
+        'F': 'Wed', 'J': 'Wed', 'M': 'Wed', 'Q': 'Wed', 'AC': 'Wed', 'AN': 'Wed', 'AD': 'Wed', 'AE': 'Wed', 'AL': 'Wed', 'AR': 'Wed', 'AT': 'Wed', 'KRKR': 'Wed', 'QK': 'Wed'
+    };
+    let wtRanges = { 'Mon': {min:'', max:''}, 'Tue': {min:'1', max:'10'}, 'Wed': {min:'11', max:'20'} }; // 초기 예시값 (화, 수 절반)
+
+    function clearLogsSite() {
+        if(confirm('모든 수정 로그를 삭제하시겠습니까?\n서버(구글 시트)에도 빈 로그로 즉시 덮어씌워집니다.')) {
+            editLog = [];
+            saveLog();
+            refreshLogPanel();
+            debouncedSyncToSheet();
+        }
+    }
+
+    // Day Assignment Logic
+    function getCageDay(cage) {
+        if (cage.code === 'G') {
+            if (cage.type === 'breeding') return 'Mon';
+            const sub = parseInt(cage.subId) || 0;
+            if (sub >= parseInt(wtRanges['Mon'].min||9999) && sub <= parseInt(wtRanges['Mon'].max||-1)) return 'Mon';
+            if (sub >= parseInt(wtRanges['Tue'].min||9999) && sub <= parseInt(wtRanges['Tue'].max||-1)) return 'Tue';
+            if (sub >= parseInt(wtRanges['Wed'].min||9999) && sub <= parseInt(wtRanges['Wed'].max||-1)) return 'Wed';
+            return null;
+        }
+        return dayMap[cage.code] || null;
+    }
+
+    function renderDayPanel() {
+        ['Mon','Tue','Wed','None'].forEach(d => document.getElementById('day-list-'+d).innerHTML = '');
+        Object.keys(STRAIN_MAP).forEach(k => {
+            const day = dayMap[k] || 'None';
+            const list = document.getElementById('day-list-'+day);
+            if(list) {
+                const el = document.createElement('div');
+                el.className = 'strain-item';
+                el.draggable = true;
+                el.innerText = `${k} (${STRAIN_MAP[k].name})`;
+                el.dataset.code = k;
+                el.ondragstart = (e) => e.dataTransfer.setData('text/plain', k);
+                list.appendChild(el);
+            }
+        });
+        
+        ['Mon','Tue','Wed'].forEach(d => {
+            document.getElementById(`wt-${d.toLowerCase()}-min`).value = wtRanges[d].min;
+            document.getElementById(`wt-${d.toLowerCase()}-max`).value = wtRanges[d].max;
+        });
+        setupDayDragDrop();
+    }
+
+    function setupDayDragDrop() {
+        document.querySelectorAll('.day-list').forEach(list => {
+            list.ondragover = (e) => { e.preventDefault(); list.style.background = 'rgba(255,255,255,0.05)'; };
+            list.ondragleave = (e) => { list.style.background = ''; };
+            list.ondrop = (e) => {
+                e.preventDefault();
+                list.style.background = '';
+                const code = e.dataTransfer.getData('text/plain');
+                const day = list.dataset.day;
+                if(day === 'None') delete dayMap[code];
+                else dayMap[code] = day;
+                renderDayPanel();
+            };
+        });
+    }
+
+    function openDayPanel() {
+        closeModal(); closeLogPanel(); saveAndCloseMatchPanel();
+        renderDayPanel();
+        document.getElementById('day-panel').classList.add('open');
+    }
+
+    function saveAndCloseDayPanel() {
+        ['Mon','Tue','Wed'].forEach(d => {
+            wtRanges[d].min = document.getElementById(`wt-${d.toLowerCase()}-min`).value;
+            wtRanges[d].max = document.getElementById(`wt-${d.toLowerCase()}-max`).value;
+        });
+        document.getElementById('day-panel').classList.remove('open');
+        renderMainBoard();
+        debouncedSyncToSheet();
+    }
+
+    let cages = [];
+
+
+    let isBatchMode = false;
+    let selectedIds = new Set();
+    let dragData = { active: false, isDragging: false, items: [], primaryId: null, blockOffset: 0, startX: 0, startY: 0 };
+    let marquee = { active: false, startX: 0, startY: 0 };
+    let currentHoverIdx = -1;
+    let batchMoveMode = false;
+    let overflowRackQueue = [];
+
+    // ── Global pointer down (marquee + panel close) ──
+document.addEventListener('pointerdown', (e) => {
+        // Log panel close
+        const logP = document.getElementById('log-panel');
+        if (logP.classList.contains('open') && !logP.contains(e.target) && !e.target.closest('header')) {
+            closeLogPanel(); return;
+        }
+        // Match panel close
+        const matchPanel = document.getElementById('match-panel');
+        if (matchPanel.classList.contains('open') && !matchPanel.contains(e.target) && !e.target.closest('header')) {
+            saveAndCloseMatchPanel(); return;
+        }
+        // Day panel close
+        const dayPanel = document.getElementById('day-panel');
+        if (dayPanel && dayPanel.classList.contains('open') && !dayPanel.contains(e.target) && !e.target.closest('header')) {
+            saveAndCloseDayPanel(); return;
+        }
+
+        if (!isBatchMode) return;
+        if (e.button !== 0) return;
+        if (e.target.closest('.cage') || e.target.closest('header') || e.target.closest('.map-nav') || e.target.closest('.modal') || e.target.closest('.batch-bar')) return;
+
+        e.preventDefault();
+        marquee.active = true;
+        marquee.startX = e.clientX; marquee.startY = e.clientY;
+        marquee.initialSelected = new Set(selectedIds);
+
+        const box = document.getElementById('selection-marquee');
+        box.style.display = 'block';
+        box.style.left = e.clientX + 'px'; box.style.top = e.clientY + 'px';
+        box.style.width = '0px'; box.style.height = '0px';
+
+        document.addEventListener('pointermove', onMarqueeMove);
+        document.addEventListener('pointerup', onMarqueeUp);
+    });
+
+    // ── Overflow ──────────────────────────────────
+    function getOverflowStatus() {
+        const overflowed = [];
+        for (const rName of Object.keys(RACK_ROWS)) {
+            const cap = RACK_ROWS[rName] * 7;
+            const overCages = cages.filter(c => c.rackId === rName && c.cellIdx >= cap);
+            if (overCages.length > 0) overflowed.push({ rack: rName, count: overCages.length, capacity: cap, overCages });
+        }
+        return overflowed;
+    }
+    function isOverflowing() { return getOverflowStatus().length > 0; }
+    function blockIfOverflow() { return isOverflowing(); }
+
+    function updateOverflowUI() {
+        const all = getOverflowStatus();
+        const banner = document.getElementById('overflow-banner');
+        if (all.length === 0) {
+            document.body.classList.remove('overflow-alert');
+            banner.classList.remove('show'); overflowRackQueue = []; return;
+        }
+        document.body.classList.add('overflow-alert'); banner.classList.add('show');
+        overflowRackQueue = all.map(o => o.rack);
+        document.getElementById('banner-racks').innerText = all.map(o => `Rack ${o.rack} +${o.count}`).join('  /  ');
+    }
+
+    function goToNextOverflowRack() {
+        if (overflowRackQueue.length === 0) return;
+        const idx = overflowRackQueue.indexOf(currentRack);
+        currentRack = overflowRackQueue[(idx + 1) % overflowRackQueue.length];
+        buildLeftSidebar(); renderMainBoard();
+    }
+
+    // ── Contiguous check ──────────────────────────
+    function checkContiguous() {
+        if (selectedIds.size === 0) return { ok: false, cages: [] };
+        if (selectedIds.size === 1) return { ok: true, cages: [] };
+        const rackOrder = ['A','B','C','D','E'];
+        const selected = cages.filter(c => selectedIds.has(c.id));
+        function getAbsoluteIdx(cage) {
+            let offset = 0;
+            for (const rName of rackOrder) { if (rName === cage.rackId) break; offset += RACK_ROWS[rName] * 7; }
+            return offset + cage.cellIdx;
+        }
+        const sorted = selected.slice().sort((a,b) => getAbsoluteIdx(a) - getAbsoluteIdx(b));
+        const indices = sorted.map(c => getAbsoluteIdx(c));
+        let isContiguous = true;
+        for (let i = 0; i < indices.length-1; i++) { if (indices[i+1] !== indices[i]+1) { isContiguous=false; break; } }
+        return { ok: isContiguous, cages: sorted };
+    }
+
+    // ── Batch mode ────────────────────────────────
+    function toggleBatchMode() {
+        isBatchMode = !isBatchMode;
+        const btn = document.getElementById('btn-batch');
+        if (isBatchMode) {
+            document.body.classList.add('batch-mode'); btn.classList.add('btn-active'); btn.innerText = '✅ 선택 완료'; batchMoveMode = false;
+        } else {
+            document.body.classList.remove('batch-mode'); btn.classList.remove('btn-active'); btn.innerText = '☑️ 일괄 선택';
+            marquee.active = false; batchMoveMode = false;
+            document.getElementById('selection-marquee').style.display = 'none';
+            clearSelection();
+        }
+    }
+
+    function startBatchMove() {
+        const result = checkContiguous();
+        if (!result.ok) return;
+        batchMoveMode = true; isBatchMode = false;
+        document.body.classList.remove('batch-mode');
+        const btn = document.getElementById('btn-batch');
+        btn.classList.remove('btn-active'); btn.innerText = '☑️ 일괄 선택';
+        document.getElementById('batch-count').innerText = `${selectedIds.size}개 케이지 이동 준비됨`;
+        document.getElementById('contiguous-badge').className = 'contiguous-badge ok';
+        document.getElementById('contiguous-badge').innerText = '✦ 드래그하여 이동';
+        document.getElementById('btn-batch-move').style.display = 'none';
+        document.getElementById('batch-bar').classList.add('show');
+    }
+
+    // ── Marquee ───────────────────────────────────
+    function onMarqueeMove(e) {
+        if (!marquee.active) return;
+        const box = document.getElementById('selection-marquee');
+        const x = Math.min(e.clientX, marquee.startX), y = Math.min(e.clientY, marquee.startY);
+        const w = Math.abs(e.clientX - marquee.startX), h = Math.abs(e.clientY - marquee.startY);
+        box.style.left = x+'px'; box.style.top = y+'px'; box.style.width = w+'px'; box.style.height = h+'px';
+        const newSel = new Set(marquee.initialSelected);
+        document.querySelectorAll('#main-grid .cage').forEach(el => {
+            const r = el.getBoundingClientRect();
+            if (!(r.right<x || r.left>x+w || r.bottom<y || r.top>y+h)) newSel.add(el.id);
+        });
+        selectedIds = newSel; updateSelectionUI();
+    }
+
+    function onMarqueeUp(e) {
+        if (!marquee.active) return;
+        marquee.active = false;
+        document.getElementById('selection-marquee').style.display = 'none';
+        document.removeEventListener('pointermove', onMarqueeMove);
+        document.removeEventListener('pointerup', onMarqueeUp);
+        updateSelectionUI();
+    }
+
+    // ── Drag engine ───────────────────────────────
+    function setupDragEngine(cageEl, cageId) {
+        cageEl.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault(); e.stopPropagation();
+
+            if (isBatchMode) {
+                if (selectedIds.has(cageId)) selectedIds.delete(cageId); else selectedIds.add(cageId);
+                updateSelectionUI(); return;
+            }
+
+            if (batchMoveMode && selectedIds.has(cageId)) {
+                dragData.active = true; dragData.isDragging = false;
+                dragData.startX = e.clientX; dragData.startY = e.clientY;
+                dragData.primaryId = cageId; dragData.items = [];
+                const result = checkContiguous();
+                if (result.ok && result.cages.length > 0) {
+                    const cur = result.cages.filter(c => c.rackId === currentRack).sort((a,b) => a.cellIdx - b.cellIdx);
+                    if (cur.length > 0) {
+                        dragData.blockOffset = Math.max(0, cur.findIndex(c => c.id === cageId));
+                        cur.forEach(c => {
+                            const el = document.getElementById(c.id);
+                            if (!el) return;
+                            const rect = el.getBoundingClientRect();
+                            dragData.items.push({ id:c.id, el, shiftX: e.clientX-rect.left, shiftY: e.clientY-rect.top });
+                        });
+                    } else initSingleDrag(cageEl, cageId, e);
+                } else initSingleDrag(cageEl, cageId, e);
+                document.addEventListener('pointermove', onPointerMove);
+                document.addEventListener('pointerup', onPointerUp);
+                return;
+            }
+
+            dragData.active = true; dragData.isDragging = false;
+            dragData.startX = e.clientX; dragData.startY = e.clientY;
+            dragData.primaryId = cageId; dragData.items = [];
+
+            if (!selectedIds.has(cageId)) {
+                clearSelection(); initSingleDrag(cageEl, cageId, e);
+            } else {
+                const selCages = cages.filter(c => selectedIds.has(c.id) && c.rackId === currentRack).sort((a,b) => a.cellIdx - b.cellIdx);
+                let isCont = true;
+                for (let i = 0; i < selCages.length-1; i++) { if (selCages[i+1].cellIdx !== selCages[i].cellIdx+1) { isCont=false; break; } }
+                if (isCont && selCages.length > 0) {
+                    dragData.blockOffset = selCages.findIndex(c => c.id === cageId);
+                    selCages.forEach(c => {
+                        const el = document.getElementById(c.id);
+                        const rect = el.getBoundingClientRect();
+                        dragData.items.push({ id:c.id, el, shiftX: e.clientX-rect.left, shiftY: e.clientY-rect.top });
+                    });
+                } else initSingleDrag(cageEl, cageId, e);
+            }
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+        });
+    }
+
+    function initSingleDrag(cageEl, cageId, e) {
+        dragData.blockOffset = 0;
+        const rect = cageEl.getBoundingClientRect();
+        dragData.items.push({ id:cageId, el:cageEl, shiftX: e.clientX-rect.left, shiftY: e.clientY-rect.top });
+    }
+
+    function onPointerMove(e) {
+        if (!dragData.active) return;
+        if (!dragData.isDragging) {
+            if (Math.abs(e.clientX-dragData.startX) > 5 || Math.abs(e.clientY-dragData.startY) > 5) {
+                dragData.isDragging = true;
+                dragData.items.forEach(item => {
+                    const rect = item.el.getBoundingClientRect();
+                    document.body.appendChild(item.el);
+                    item.el.classList.add('floating'); item.el.classList.remove('selected');
+                    if (item.id === dragData.primaryId) {
+                        item.el.style.width = rect.width+'px'; item.el.style.height = rect.height+'px';
+                        item.el.style.transformOrigin = `${dragData.shiftX}px ${dragData.shiftY}px`;
+                        if (dragData.items.length > 1) {
+                            const badge = document.createElement('div');
+                            badge.className = 'drag-badge'; badge.id = 'drag-badge';
+                            badge.innerText = dragData.items.length; item.el.appendChild(badge);
+                        }
+                    } else item.el.style.display = 'none';
+                });
+            } else return;
+        }
+
+        dragData.items.forEach(item => {
+            if (item.id === dragData.primaryId) {
+                item.el.style.left = (e.clientX - item.shiftX)+'px';
+                item.el.style.top  = (e.clientY - item.shiftY)+'px';
+            }
+        });
+
+        let hoveredRack = null;
+        document.querySelectorAll('.map-rack').forEach(rackEl => {
+            const r = rackEl.getBoundingClientRect();
+            if (e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom) {
+                rackEl.classList.add('drag-over'); hoveredRack = rackEl.dataset.rack;
+            } else rackEl.classList.remove('drag-over');
+        });
+        if (hoveredRack && hoveredRack !== currentRack) { currentRack = hoveredRack; renderMainBoard(); buildLeftSidebar(); }
+
+        let minD = 9999, hoverIdx = -1;
+        document.querySelectorAll('#main-grid .slot').forEach(slot => {
+            const r = slot.getBoundingClientRect();
+            const d = Math.hypot((r.left+r.width/2)-e.clientX, (r.top+r.height/2)-e.clientY);
+            if (d < minD && d < 55) { minD = d; hoverIdx = parseInt(slot.dataset.idx); }
+        });
+        previewShift(hoverIdx);
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // ✅ calculateShiftLogic — 왼쪽 열 드래그 버그 수정
+    //
+    // 문제: blockTargetIdx 가 행의 맨 왼쪽(col 0)일 때 isLeftmost 판정이
+    //       되어 왼쪽 밀기를 시도하지 않았음. 그 결과 밀려야 할 케이지들이
+    //       오른쪽으로만 밀리거나 이전 행 끝쪽 슬롯으로 이동해야 하는
+    //       케이지가 엉뚱한 위치로 가는 현상이 생겼음.
+    //
+    // 수정 전략:
+    //   "왼쪽 밀기"의 기준을 단순히 blockTargetIdx % 7 === 0 이 아니라,
+    //   실제로 왼쪽에 빈 슬롯이 있는지 여부로 판단.
+    //   → blockTargetIdx > 0 이고 왼쪽에 빈 슬롯이 충분히 있으면 밀기.
+    //   → blockTargetIdx === 0 이면 왼쪽 밀기 불가 → 오른쪽으로만 밀기.
+    //
+    //   추가로, 오른쪽으로 밀릴 때도 capacity를 넘어서 ghost 슬롯 영역으로
+    //   밀리는 케이지의 수를 최소화하기 위해,
+    //   왼쪽 여유가 부분적으로라도 있으면 왼쪽 우선 밀기를 시도.
+    // ────────────────────────────────────────────────────────────────
+    function calculateShiftLogic(targetIdx) {
+        if (targetIdx === -1) return null;
+
+        const K        = dragData.items.length;
+        const capacity = RACK_ROWS[currentRack] * 7;
+        const dragIds  = dragData.items.map(i => i.id);
+
+        // 드래그 블록의 첫 번째 슬롯 목표 인덱스
+        let blockTargetIdx = targetIdx - dragData.blockOffset;
+
+        // 경계 클램프: 0 이하, capacity 초과 방지
+        if (blockTargetIdx < 0) blockTargetIdx = 0;
+        if (blockTargetIdx + K > capacity) blockTargetIdx = capacity - K;
+
+        const blockEnd = blockTargetIdx + K - 1;
+
+        // 드래그 중인 케이지들을 제외한 현재 랙의 케이지 목록 (복사본)
+        let workCages = cages
+            .filter(c => c.rackId === currentRack && !dragIds.includes(c.id))
+            .map(c => ({ ...c }));
+
+        // 드롭 목표 범위[blockTargetIdx, blockEnd] 안에 이미 있는 케이지들
+        let occupants = workCages.filter(c => c.cellIdx >= blockTargetIdx && c.cellIdx <= blockEnd);
+
+        if (occupants.length > 0) {
+            // ── 왼쪽 밀기 시도 ──────────────────────────────────
+            // 조건: blockTargetIdx > 0 (절대적으로 왼쪽에 공간이 있어야 함)
+            let shiftedLeft = false;
+            if (blockTargetIdx > 0) {
+                // 왼쪽 방향으로 빈 슬롯을 최대한 수집
+                let emptyLeft = [];
+                for (let i = blockTargetIdx - 1; i >= 0; i--) {
+                    if (!workCages.some(c => c.cellIdx === i)) emptyLeft.push(i);
+                    if (emptyLeft.length >= occupants.length) break;
+                }
+                if (emptyLeft.length >= occupants.length) {
+                    // 오른쪽에 있는 occupant부터 왼쪽 빈 슬롯으로 배정
+                    occupants.sort((a, b) => b.cellIdx - a.cellIdx);
+                    occupants.forEach((occ, idx) => { occ.cellIdx = emptyLeft[idx]; });
+                    shiftedLeft = true;
+                }
+            }
+
+            // ── 오른쪽 밀기 (왼쪽 밀기 실패 시) ────────────────
+            if (!shiftedLeft) {
+                let emptyRight = [];
+                for (let i = blockEnd + 1; i < capacity + 200; i++) {
+                    if (!workCages.some(c => c.cellIdx === i)) emptyRight.push(i);
+                    if (emptyRight.length >= occupants.length) break;
+                }
+                occupants.sort((a, b) => a.cellIdx - b.cellIdx);
+                occupants.forEach((occ, idx) => { occ.cellIdx = emptyRight[idx]; });
+            }
+        }
+
+        return { blockTargetIdx, workCages };
+    }
+
+    function previewShift(targetIdx) {
+        if (currentHoverIdx === targetIdx) return;
+        currentHoverIdx = targetIdx;
+        const grid  = document.getElementById('main-grid');
+        const slots = grid.querySelectorAll('.slot');
+        const result = calculateShiftLogic(targetIdx);
+        if (!result) return;
+        result.workCages.forEach(cage => {
+            const el   = document.getElementById(cage.id);
+            const slot = slots[cage.cellIdx];
+            if (el && slot) { el.style.left = slot.offsetLeft+'px'; el.style.top = slot.offsetTop+'px'; }
+        });
+    }
+
+    function onPointerUp(e) {
+        if (!dragData.active) return;
+        dragData.active = false;
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+
+        if (!dragData.isDragging) {
+            if (!batchMoveMode) { clearSelection(); openModal(dragData.primaryId); }
+            return;
+        }
+
+        const finalIdx = currentHoverIdx;
+        previewShift(-1);
+
+        // 이동 전 위치 기록 (로그용)
+        const movedSnapshot = dragData.items.map(item => {
+            const c = cages.find(x => x.id === item.id);
+            return c ? { id: c.id, from: `Rack ${c.rackId} / slot ${c.cellIdx}` } : null;
+        }).filter(Boolean);
+
+        dragData.items.forEach(item => {
+            item.el.classList.remove('floating'); item.el.style.display = '';
+            const badge = document.getElementById('drag-badge'); if (badge) badge.remove();
+            item.el.remove();
+        });
+
+        if (finalIdx !== -1) {
+            const result = calculateShiftLogic(finalIdx);
+            if (result) {
+                result.workCages.forEach(wc => { const t = cages.find(c => c.id === wc.id); if (t) t.cellIdx = wc.cellIdx; });
+                dragData.items.forEach((item, idx) => {
+                    const t = cages.find(c => c.id === item.id);
+                    if (t) {
+                        const fromRack = t.rackId, fromIdx = t.cellIdx;
+                        const toRack = currentRack, toIdx = result.blockTargetIdx + idx;
+                        t.rackId = toRack; t.cellIdx = toIdx;
+
+                        // 실제로 위치가 바뀐 경우에만 로그 기록
+                        if (fromRack !== toRack || fromIdx !== toIdx) {
+                            logAction('move',
+                                `Cage ${item.id} moved to Rack ${toRack} / slot ${toIdx}`,
+                                `from Rack ${fromRack} / slot ${fromIdx}`
+                            );
+                        }
+                    }
+                });
+            }
+        }
+
+        if (batchMoveMode) { batchMoveMode = false; clearSelection(); } else clearSelection();
+        renderMainBoard();
+        document.querySelectorAll('.map-rack').forEach(el => el.classList.remove('drag-over'));
+    }
+
+    // ── Selection UI ──────────────────────────────
+    function updateSelectionUI() {
+        document.querySelectorAll('.cage').forEach(el => {
+            if (selectedIds.has(el.id)) el.classList.add('selected'); else el.classList.remove('selected');
+        });
+        const bar = document.getElementById('batch-bar');
+        const badge = document.getElementById('contiguous-badge');
+        const moveBtn = document.getElementById('btn-batch-move');
+        const batchBtn = document.getElementById('btn-batch');
+
+        if (selectedIds.size > 0 && !batchMoveMode) {
+            bar.classList.add('show');
+            document.getElementById('batch-count').innerText = `${selectedIds.size}개 케이지 선택됨`;
+            const result = checkContiguous();
+            if (result.ok) {
+                badge.className = 'contiguous-badge ok'; badge.innerText = '✦ 연속 배치 (이동 가능)';
+                moveBtn.style.display = ''; moveBtn.removeAttribute('disabled'); batchBtn.removeAttribute('disabled');
+            } else {
+                badge.className = 'contiguous-badge ng'; badge.innerText = '✕ 비연속 (이동 불가)';
+                moveBtn.setAttribute('disabled', true); batchBtn.setAttribute('disabled', true);
+            }
+        } else if (selectedIds.size === 0 && !batchMoveMode) {
+            bar.classList.remove('show');
+            badge.className = 'contiguous-badge'; badge.innerText = '';
+            batchBtn.removeAttribute('disabled'); moveBtn.style.display = '';
+        }
+    }
+
+    function clearSelection() {
+        selectedIds.clear(); batchMoveMode = false;
+        document.getElementById('btn-batch-move').style.display = '';
+        const batchBtn = document.getElementById('btn-batch');
+        batchBtn.removeAttribute('disabled');
+        if (!isBatchMode) { batchBtn.classList.remove('btn-active'); batchBtn.innerText = '☑️ 일괄 선택'; }
+        updateSelectionUI();
+    }
+
+    function deleteSelectedCages() {
+        if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 모두 삭제하시겠습니까?`)) return;
+        const ids = [...selectedIds];
+        ids.forEach(id => {
+            const c = cages.find(x => x.id === id);
+            if (c) logAction('delete', `Cage ${id} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
+        });
+        cages = cages.filter(c => !selectedIds.has(c.id));
+        clearSelection(); renderMainBoard(); buildLeftSidebar();
+    }
+
+    // ── Render ────────────────────────────────────
+    function renderMainBoard() {
+        const grid = document.getElementById('main-grid');
+        document.getElementById('current-rack-title').innerText = `Rack ${currentRack}`;
+        const baseCapacity = RACK_ROWS[currentRack] * 7;
+        const currentCages = cages.filter(c => c.rackId === currentRack);
+        const maxIdx = currentCages.reduce((max, c) => Math.max(max, c.cellIdx), baseCapacity - 1);
+        const totalCapacity = maxIdx + 1;
+
+        document.getElementById('current-rack-desc').innerText = `${RACK_ROWS[currentRack]}행 × 7열 (${baseCapacity}칸 내부 정원)`;
+        Array.from(grid.children).forEach(child => { if (child.classList.contains('slot')) child.remove(); });
+
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < totalCapacity; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'slot' + (i >= baseCapacity ? ' ghost-slot' : '');
+            const rChar = String.fromCharCode(64 + Math.floor(i/7) + 1);
+            slot.setAttribute('data-label', `${rChar}-${(i%7)+1}`);
+            slot.dataset.idx = i;
+            slot.onclick = () => { if (!isBatchMode && !batchMoveMode) { clearSelection(); openModal(null, i); } };
+            frag.appendChild(slot);
+        }
+        grid.prepend(frag);
+
+        const slots = grid.querySelectorAll('.slot');
+        const currentCageIds = currentCages.map(c => c.id);
+        const dragIds = dragData.active && dragData.isDragging ? dragData.items.map(i => i.id) : [];
+
+        Array.from(grid.querySelectorAll('.cage')).forEach(el => {
+            if (!currentCageIds.includes(el.id) && !dragIds.includes(el.id)) el.remove();
+        });
+
+        currentCages.forEach(cage => {
+            if (dragIds.includes(cage.id)) return;
+            let el = document.getElementById(cage.id);
+            const displaySub = cage.subId || '';
+            let contentHtml = cage.type === 'mating'
+                ? `<span class="strain-code" style="font-size:24px;letter-spacing:-1px;">${cage.code}${displaySub}</span>`
+                : `<span class="strain-code">${cage.code}</span>` + (displaySub ? `<span class="sub-id">${displaySub}</span>` : '');
+
+            // ── Day Badge Logic ──
+            let dayBadgeHtml = '';
+            const day = getCageDay(cage);
+            if (day) {
+                const label = day === 'Mon' ? '월' : day === 'Tue' ? '화' : '수';
+                dayBadgeHtml = `<div class="day-badge ${day}">${label}</div>`;
+            }
+            // ── Notes Icon Logic ──
+            const noteHtml = cage.notes ? `<div style="position:absolute; bottom:6px; font-size:16px; pointer-events:none;">${(cage.notes.includes('G완')||cage.notes.includes('G전')) ? '⭐' : '📝'}</div>` : '';
+            
+            contentHtml = dayBadgeHtml + contentHtml + noteHtml;
+
+            if (!el) {
+                el = document.createElement('div'); el.id = cage.id; el.className = `cage ${cage.type}`;
+                el.innerHTML = contentHtml; setupDragEngine(el, cage.id); grid.appendChild(el);
+            } else {
+                el.className = `cage ${cage.type}`; el.innerHTML = contentHtml;
+            }
+
+            if (selectedIds.has(cage.id)) el.classList.add('selected'); else el.classList.remove('selected');
+            setTimeout(() => {
+                const slot = slots[cage.cellIdx];
+                if (slot) { el.style.left = slot.offsetLeft+'px'; el.style.top = slot.offsetTop+'px'; }
+            }, 10);
+        });
+        updateStatsBar();
+    }
+
+    function buildLeftSidebar() {
+        const configBox = document.getElementById('config-box'); configBox.innerHTML = '';
+        for (const [rName, rows] of Object.entries(RACK_ROWS)) {
+            const rowDiv = document.createElement('div'); rowDiv.className = 'config-row';
+            rowDiv.innerHTML = `<span>Rack ${rName} 세로 줄 수</span><input type="number" class="config-input" value="${rows}" min="1" max="10" data-rack="${rName}">`;
+            rowDiv.querySelector('input').onchange = (e) => { RACK_ROWS[e.target.dataset.rack] = parseInt(e.target.value); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet(); };
+            configBox.appendChild(rowDiv);
+        }
+        document.querySelectorAll('.map-rack').forEach(rackEl => {
+            const rackName = rackEl.dataset.rack;
+            rackEl.onclick = () => { currentRack = rackName; buildLeftSidebar(); renderMainBoard(); };
+            if (rackName === currentRack) rackEl.classList.add('active'); else rackEl.classList.remove('active');
+        });
+    }
+
+    // ── Modal ─────────────────────────────────────
+    const modal = document.getElementById('modal');
+    let targetSlotIdxForCreate = null;
+
+    function setToday(inputId) {
+        const d = new Date(); const pad = n => String(n).padStart(2,'0');
+        document.getElementById(inputId).value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+
+    function updateGenotypeDisplay() {
+        const code = document.getElementById('m-code').value.toUpperCase();
+        const el   = document.getElementById('genotype-display');
+        if (!code)               { el.innerText = 'Genotype: 기호를 입력하세요'; el.style.color = 'var(--text-sub)'; }
+        else if (STRAIN_MAP[code]) { 
+            const sm = STRAIN_MAP[code];
+            el.innerText = `Genotype: ${sm.name}`;    
+            el.style.color = '#34c759'; 
+        }
+        else                      { el.innerText = 'Genotype: 매칭 안됨 (매칭표 확인)'; el.style.color = '#FF375F'; }
+    }
+
+    function openModal(cageId, slotIdx = null) {
+        const overflow = blockIfOverflow();
+        if (!cageId) { if (overflow) return; targetSlotIdxForCreate = slotIdx; }
+
+        if (cageId) {
+            const c = cages.find(x => x.id === cageId);
+            document.getElementById('m-id').value = c.id;
+            document.getElementById('m-type').value = c.type;
+            document.getElementById('m-code').value = c.code;
+            document.getElementById('m-sub').value = c.subId;
+            document.getElementById('m-notes').value = c.notes || '';
+            document.getElementById('m-dom').value = c.dom || '';
+            document.getElementById('m-male-count').value = c.mMale || 0;
+            document.getElementById('m-male-geno').value = c.mGeno || '';
+            document.getElementById('m-male-dob').value = c.mDob || '';
+            document.getElementById('m-female-count').value = c.mFemale || 0;
+            document.getElementById('m-female-geno').value = c.fGeno || '';
+            document.getElementById('m-female-dob').value = c.fDob || '';
+            document.getElementById('b-gender').value = c.gender || 'unknown';
+            document.getElementById('b-count').value = c.bCount || 0;
+            document.getElementById('b-dob').value = c.bDob || '';
+            document.getElementById('btn-delete').style.display = 'block';
+
+            if (overflow) {
+                document.getElementById('modal-title').innerHTML = '케이지 삭제 전용 <span style="font-size:11px;color:#FF375F;font-weight:600;background:rgba(255,55,95,0.12);padding:2px 8px;border-radius:6px;border:1px solid rgba(255,55,95,0.3);">⚠ 초과 상태 — 수정 불가</span>';
+                document.getElementById('btn-save').setAttribute('disabled', true);
+                document.getElementById('btn-save').style.opacity = '0.3';
+                document.getElementById('btn-save').style.cursor = 'not-allowed';
+                document.querySelectorAll('#modal .form-control').forEach(el => el.setAttribute('disabled', true));
+                document.getElementById('m-type').setAttribute('disabled', true);
+            } else {
+                document.getElementById('modal-title').innerText = '케이지 데이터 편집';
+                document.getElementById('btn-save').removeAttribute('disabled');
+                document.getElementById('btn-save').style.opacity = '';
+                document.getElementById('btn-save').style.cursor = '';
+                document.querySelectorAll('#modal .form-control').forEach(el => el.removeAttribute('disabled'));
+                document.getElementById('m-type').removeAttribute('disabled');
+            }
+        } else {
+            targetSlotIdxForCreate = slotIdx;
+            document.getElementById('modal-title').innerText = `신규 등록 (Rack ${currentRack})`;
+            document.getElementById('m-id').value = '';
+            document.getElementById('m-type').value = 'breeding';
+            document.getElementById('m-code').value = '';
+            document.getElementById('m-sub').value = '';
+            document.getElementById('m-notes').value = '';
+            document.getElementById('m-dom').value = '';
+            document.getElementById('m-male-count').value = '';
+            document.getElementById('m-male-geno').value = '';
+            document.getElementById('m-male-dob').value = '';
+            document.getElementById('m-female-count').value = '';
+            document.getElementById('m-female-geno').value = '';
+            document.getElementById('m-female-dob').value = '';
+            document.getElementById('b-gender').value = 'female';
+            document.getElementById('b-count').value = 1;
+            document.getElementById('b-dob').value = '';
+            document.getElementById('btn-delete').style.display = 'none';
+            document.getElementById('btn-save').removeAttribute('disabled');
+            document.getElementById('btn-save').style.opacity = '';
+            document.getElementById('btn-save').style.cursor = '';
+            document.querySelectorAll('#modal .form-control').forEach(el => el.removeAttribute('disabled'));
+        }
+        toggleModalFields(); updateGenotypeDisplay(); modal.style.display = 'flex';
+    }
+
+    function toggleModalFields() {
+        const type = document.getElementById('m-type').value;
+        document.getElementById('breeding-fields').style.display = type === 'breeding' ? 'block' : 'none';
+        document.getElementById('mating-fields').style.display  = type === 'mating'   ? 'block' : 'none';
+    }
+
+    function closeModal() { modal.style.display = 'none'; }
+
+    function saveCage() {
+        if (blockIfOverflow() && document.getElementById('m-id').value) { closeModal(); return; }
+        const id = document.getElementById('m-id').value;
+        const info = {
+            type: document.getElementById('m-type').value,
+            code: document.getElementById('m-code').value.toUpperCase(),
+            subId: document.getElementById('m-sub').value,
+            notes: document.getElementById('m-notes').value,
+            dom: document.getElementById('m-dom').value,
+            mMale: parseInt(document.getElementById('m-male-count').value) || 0,
+            mGeno: document.getElementById('m-male-geno').value,
+            mDob: document.getElementById('m-male-dob').value,
+            mFemale: parseInt(document.getElementById('m-female-count').value) || 0,
+            fGeno: document.getElementById('m-female-geno').value,
+            fDob: document.getElementById('m-female-dob').value,
+            gender: document.getElementById('b-gender').value,
+            bCount: parseInt(document.getElementById('b-count').value) || 0,
+            bDob: document.getElementById('b-dob').value
+        };
+
+        if (id) {
+            const prev = cages.find(x => x.id === id);
+            // ── Edit log: 변경된 필드 요약 ──
+            const changed = [];
+            if (prev.type !== info.type) changed.push(`type: ${prev.type}→${info.type}`);
+            if (prev.code !== info.code) changed.push(`code: ${prev.code}→${info.code}`);
+            if (prev.subId !== info.subId) changed.push(`subId: ${prev.subId}→${info.subId}`);
+            if (prev.notes !== info.notes) {
+                changed.push('notes updated');
+                info.noteUpdated = Date.now();
+            } else {
+                info.noteUpdated = prev.noteUpdated;
+            }
+            if (prev.dom !== info.dom) changed.push(`DOM: ${prev.dom||'—'}→${info.dom||'—'}`);
+            if (prev.gender !== info.gender) changed.push(`gender: ${prev.gender}→${info.gender}`);
+            if (prev.bCount !== info.bCount) changed.push(`count: ${prev.bCount}→${info.bCount}`);
+            if (prev.mMale !== info.mMale) changed.push(`♂: ${prev.mMale}→${info.mMale}`);
+            if (prev.mFemale !== info.mFemale) changed.push(`♀: ${prev.mFemale}→${info.mFemale}`);
+            if (prev.bDob !== info.bDob) changed.push(`DOB: ${prev.bDob||'—'}→${info.bDob||'—'}`);
+
+            Object.assign(prev, info);
+            logAction('edit',
+                `Cage ${id} edited`,
+                changed.length ? changed.join('\n') : 'no field change detected'
+            );
+        } else {
+            const newId = 'c_' + Date.now();
+            if (info.notes) info.noteUpdated = Date.now();
+            cages.push({ id: newId, rackId: currentRack, cellIdx: targetSlotIdxForCreate, ...info });
+            logAction('create',
+                `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
+                `${info.code}${info.subId} (${info.type})`
+            );
+        }
+        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+    }
+
+    function deleteCage() {
+        const targetId = document.getElementById('m-id').value;
+        const c = cages.find(x => x.id === targetId);
+        if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
+        cages = cages.filter(c => c.id !== targetId);
+        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+    }
+
+    // ── Strain panel ──────────────────────────────
+    function openMatchPanel(e) {
+        e.stopPropagation();
+        if (blockIfOverflow()) return;
+        const list = document.getElementById('mapping-list'); list.innerHTML = '';
+        for (const [key, obj] of Object.entries(STRAIN_MAP)) list.appendChild(createStrainRow(key, obj.name, obj.g_done));
+        document.getElementById('match-panel').classList.add('open');
+    }
+
+    function createStrainRow(key, name, g_done) {
+        const row = document.createElement('div'); row.className = 'match-row';
+        row.innerHTML = `
+            <input type="text" class="match-key-input" value="${key}" maxlength="4" placeholder="기호"
+                style="width:50px;text-align:center;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);
+                color:#ffcc00;font-weight:bold;border-radius:8px;padding:8px;">
+            <input type="text" class="match-val-input" value="${name}" placeholder="Strain 명칭 입력"
+                style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);
+                color:white;padding:8px;border-radius:8px;">
+            <label style="color:#34c759;font-size:12px;display:flex;align-items:center;gap:4px;white-space:nowrap;">
+                <input type="checkbox" class="match-gdone-input" ${g_done ? 'checked' : ''}> G완료
+            </label>
+            <button onclick="this.parentElement.remove()"
+                style="background:none;border:none;color:#FF375F;font-size:20px;font-weight:bold;cursor:pointer;padding:0 5px;">×</button>
+        `;
+        return row;
+    }
+
+    function addStrainRow() { document.getElementById('mapping-list').appendChild(createStrainRow('', '', false)); }
+
+    function saveAndCloseMatchPanel() {
+        if (!document.getElementById('match-panel').classList.contains('open')) return;
+        const tempMap = {};
+        document.querySelectorAll('.match-row').forEach(row => {
+            const k = row.querySelector('.match-key-input').value.trim().toUpperCase();
+            const name = row.querySelector('.match-val-input').value.trim();
+            const g_done = row.querySelector('.match-gdone-input').checked;
+            if (k) tempMap[k] = { name, g_done };
+        });
+        
+        const sortedKeys = Object.keys(tempMap).sort((a, b) => {
+            if (a.length !== b.length) return a.length - b.length;
+            return a.localeCompare(b);
+        });
+        
+        STRAIN_MAP = {};
+        sortedKeys.forEach(k => { STRAIN_MAP[k] = tempMap[k]; });
+        
+        document.getElementById('match-panel').classList.remove('open');
+        updateGenotypeDisplay();
+    }
+
+    // ── Stats ─────────────────────────────────────
+    function updateStatsBar() {
+        const total = Object.values(RACK_ROWS).reduce((a,b) => a+b, 0) * 7;
+        const rate  = total > 0 ? Math.round((cages.length / total) * 100) : 0;
+        document.getElementById('occupancy-label').innerText = `${rate}% (${cages.length}/${total} 칸)`;
+        document.getElementById('occupancy-bar').style.width = `${rate}%`;
+        updateOverflowUI();
+    }
+    // ── Download Log ──────────────────────────────
+    function downloadLog() {
+        if (editLog.length === 0) { alert('다운로드할 로그가 없습니다.'); return; }
+        let textContent = "Smart Rack OS 수정 로그\n==========================\n\n";
+        editLog.forEach(e => {
+            textContent += `[${e.ts}] ${e.action}\n`;
+            if (e.detail) textContent += `내역:\n${e.detail}\n`;
+            textContent += `--------------------------\n`;
+        });
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        a.download = `smart_rack_log_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.txt`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // ── Google Apps Script Sync ───────────────────
+    // 구글 시트 배포 후 발급받은 Web App URL을 여기에 입력하세요.
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxPDsPbLtKMxotEQ4wj0gymQq5j4NzL9QCcQ9fNJUSOm3gDxH0eUuQ-rnxq7Ocrj3eV/exec'; 
+    // 임의의 비밀번호(API KEY)를 설정하세요. Apps Script의 API_KEY와 정확히 같아야 합니다.
+    const API_KEY = 'my-secret-password-1234';
+
+
+    let syncTimeout = null;
+    function debouncedSyncToSheet() {
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+            syncToSheet();
+        }, 3000); // 3초 뒤에 동기화
+    let isDataLoaded = false;
+
+    async function syncToSheet() {
+        if (!SCRIPT_URL || !isDataLoaded) return;
+        const syncBtn = document.getElementById('btn-sync');
+        try {
+            syncBtn.innerText = '🔄 동기화 중...';
+            const payload = { key: API_KEY, action: 'save', cages, rackRows: RACK_ROWS, strainMap: STRAIN_MAP, logs: editLog, dayMap: dayMap, wtRanges: wtRanges };
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // CORS 리다이렉트 에러 방지 (불투명 응답 처리)
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            });
+            // no-cors 모드에서는 응답을 읽을 수 없으므로 성공으로 간주합니다.
+            syncBtn.innerText = '✅ 동기화 완료';
+            setTimeout(() => { syncBtn.innerText = '🔄 동기화'; }, 2000);
+        } catch(e) {
+            console.error('Sync failed', e);
+            syncBtn.innerText = '⚠️ 동기화 실패';
+        }
+    }
+
+    async function syncFromSheet() {
+        if (!SCRIPT_URL) return;
+        const syncBtn = document.getElementById('btn-sync');
+        try {
+            syncBtn.innerText = '🔄 불러오는 중...';
+            const res = await fetch(SCRIPT_URL + '?action=load&key=' + API_KEY, {
+                redirect: 'follow'
+            });
+            const data = await res.json();
+            if (data && data.cages) {
+                if (data.cages) cages = data.cages;
+                if (data.rackRows) RACK_ROWS = data.rackRows;
+                // STRAIN_MAP는 HTML 내부 하드코딩된 값을 절대적 기준으로 사용 (구글 시트에서 불러오지 않음)
+                if (data.dayMap && Object.keys(data.dayMap).length > 0) dayMap = data.dayMap;
+                if (data.wtRanges && Object.keys(data.wtRanges).length > 0) wtRanges = data.wtRanges;
+                if (data.logs) {
+                    editLog = data.logs;
+                    localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
+                    refreshLogPanel();
+                }
+                renderMainBoard(); buildLeftSidebar();
+            }
+            isDataLoaded = true;
+            syncBtn.innerText = '🔄 동기화';
+        } catch(e) {
+            console.error('Load failed', e);
+            syncBtn.innerText = '⚠️ 불러오기 실패';
+        }
+    }
+
+    function manualSync() {
+        if (!SCRIPT_URL) { alert('Google Apps Script Web App URL이 설정되지 않았습니다.'); return; }
+        if (!isDataLoaded) {
+            syncFromSheet();
+        } else {
+            syncToSheet();
+        }
+    }
+
+    window.addEventListener('load', () => { if (SCRIPT_URL) syncFromSheet(); });
+    window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SCRIPT_URL) syncToSheet(); });
+
+    buildLeftSidebar();
+    renderMainBoard();
+    // Keyboard navigation in modal
+    window.navigateModal = function(dir) {
+        if (modal.style.display !== 'flex') return;
+        const currentId = document.getElementById('m-id').value;
+        if (!currentId) return;
+        const currentCage = cages.find(c => c.id === currentId);
+        if (!currentCage) return;
+
+        let rackName = currentCage.rackId;
+        let startCellIdx = parseInt(currentCage.cellIdx);
+        let maxRows = RACK_ROWS[rackName];
+        
+        let rackCages = cages.filter(c => c.rackId === rackName);
+        if (rackCages.length <= 1) return;
+
+        let nextCage = null;
+
+        if (dir === 'right' || dir === 'left') {
+            rackCages.sort((a, b) => a.cellIdx - b.cellIdx);
+            let currentIndex = rackCages.findIndex(c => c.id === currentId);
+            if (dir === 'right') nextCage = rackCages[(currentIndex + 1) % rackCages.length];
+            else nextCage = rackCages[(currentIndex - 1 + rackCages.length) % rackCages.length];
+        } else if (dir === 'down' || dir === 'up') {
+            let startCol = startCellIdx % 7;
+            let startRow = Math.floor(startCellIdx / 7);
+            
+            // 같은 열에서 위/아래 찾기
+            let currRow = startRow;
+            for (let i = 0; i < maxRows; i++) {
+                if (dir === 'down') currRow = (currRow + 1) % maxRows;
+                else currRow = (currRow - 1 + maxRows) % maxRows;
+                
+                let targetCellIdx = currRow * 7 + startCol;
+                let found = rackCages.find(c => c.cellIdx === targetCellIdx);
+                if (found) { nextCage = found; break; }
+            }
+            
+            // 같은 열에 없으면, 위/아래 줄에서 가장 가까운 열 찾기
+            if (!nextCage) {
+                for (let i = 0; i < maxRows; i++) {
+                    if (dir === 'down') startRow = (startRow + 1) % maxRows;
+                    else startRow = (startRow - 1 + maxRows) % maxRows;
+                    
+                    let rowCages = rackCages.filter(c => Math.floor(c.cellIdx / 7) === startRow);
+                    if (rowCages.length > 0) {
+                        rowCages.sort((a, b) => Math.abs((a.cellIdx % 7) - startCol) - Math.abs((b.cellIdx % 7) - startCol));
+                        nextCage = rowCages[0];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (nextCage && nextCage.id !== currentId) {
+            saveCage();
+            openModal(nextCage.id);
+        }
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (modal.style.display !== 'flex') return;
+        
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        } else {
+            return;
+        }
+
+        if (e.key === 'ArrowRight') { navigateModal('right'); e.preventDefault(); }
+        else if (e.key === 'ArrowLeft') { navigateModal('left'); e.preventDefault(); }
+        else if (e.key === 'ArrowDown') { navigateModal('down'); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { navigateModal('up'); e.preventDefault(); }
+    });
+</script>
+</body>
+</html>
