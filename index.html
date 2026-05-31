@@ -94,7 +94,15 @@
             border: 1px solid var(--glass-border); border-radius: 32px; padding: 25px;
             box-shadow: 0 30px 60px rgba(0,0,0,0.5); position: relative; width: fit-content;
         }
-        .grid-7 { display: grid; grid-template-columns: repeat(7, 1fr); width: calc(var(--cell-size) * 7 + var(--cell-gap) * 6); gap: var(--cell-gap); position: relative; justify-content: center; margin: 0 auto; }
+        @container board (min-width: 0px) {
+            .grid-7 {
+                --cell-size: max(45px, min(92px, calc((100cqw - 50px - 6 * 10px) / 7)));
+                --cell-gap: 10px;
+                display: grid; grid-template-columns: repeat(7, 1fr);
+                width: calc(var(--cell-size) * 7 + var(--cell-gap) * 6); gap: var(--cell-gap);
+                position: relative; justify-content: center; margin: 0 auto;
+            }
+        }
 
         .slot {
             width: var(--cell-size); height: var(--cell-size); border-radius: 20px; background: var(--slot-bg);
@@ -355,7 +363,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.5.2</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.6.2</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -397,26 +405,29 @@
     <div class="splitter" id="pane-splitter"></div>
     <div class="sheet-pane">
         <div class="sheet-section">
-            <div class="sheet-header">Mating (교배)</div>
+            <div class="sheet-header">Mating</div>
             <div class="sheet-table-wrapper" id="mating-wrapper">
                 <table class="sheet-table" id="mating-table">
                     <thead>
                         <tr>
-                            <th>No</th><th>Strain</th><th>수컷수</th><th>수컷Geno</th><th>수컷생일</th>
-                            <th>암컷수</th><th>암컷Geno</th><th>암컷생일</th><th>교배일</th><th>특이사항</th><th>코드</th>
+                            <th style="width:12px;"></th>
+                            <th>No.</th><th>C.no.</th><th>Strain</th><th>male</th><th>female</th>
+                            <th>D.O.B</th><th>D.O.M</th><th>other</th><th>코드</th>
                         </tr>
                     </thead>
                     <tbody id="mating-table-body"></tbody>
                 </table>
             </div>
         </div>
-        <div class="sheet-section" style="border-top: 2px solid #ccc;">
-            <div class="sheet-header">Breeding (유지/번식)</div>
+        <div class="sheet-section" style="border-top: 5px solid #d9d9d9;">
+            <div class="sheet-header">Breeding</div>
             <div class="sheet-table-wrapper" id="breeding-wrapper">
                 <table class="sheet-table" id="breeding-table">
                     <thead>
                         <tr>
-                            <th>No</th><th>Strain</th><th>성별</th><th>마리수</th><th>생일</th><th>특이사항</th><th>코드</th>
+                            <th style="width:12px;"></th>
+                            <th>No.</th><th>C.no.</th><th>Strain</th><th>sex</th><th>head</th>
+                            <th>D.O.B</th><th>other</th><th>코드</th>
                         </tr>
                     </thead>
                     <tbody id="breeding-table-body"></tbody>
@@ -636,7 +647,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 18:45:19";
+    const APP_VERSION = "2026-05-31 18:53:41";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1460,38 +1471,89 @@ document.addEventListener('pointerdown', (e) => {
         });
         
         let mHtml = ''; let bHtml = '';
-        let mNo = 1; let bNo = 1;
-        
-        sortedCages.forEach(c => {
+        let globalNoM = 1; let strainCNoM = 0; let currentStrainCodeM = null;
+        let globalNoB = 1; let strainCNoB = 0; let currentStrainCodeB = null;
+
+        function formatDateDots(d) {
+            if (!d) return '';
+            const dt = new Date(d);
+            if (isNaN(dt)) return d.replace(/-/g, '.');
+            return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+        }
+        function getDayColor(c) {
+            let day = getCageDay(c);
+            if (day === 'Mon') return '#fff2cc';
+            if (day === 'Tue') return '#d9ead3';
+            if (day === 'Wed') return '#d9d2e9';
+            return '#ffffff';
+        }
+        function formatGeno(count, geno) {
+            if (!count || count === '0') return '';
+            let g = (geno || '').toLowerCase();
+            if (g.includes('homo') || g.includes('het')) return `${count}(${geno})`;
+            return `${count}`;
+        }
+        function getNoteColor(n) {
+            if (!n) return '#000000';
+            if (n.includes('G완')) return '#FF0000';
+            if (n.includes('G전')) return '#0000FF';
+            return '#000000';
+        }
+
+        const matingCages = sortedCages.filter(c => c.type === 'mating');
+        const breedingCages = sortedCages.filter(c => c.type === 'breeding' || c.type === 'empty'); // Sentinels are excluded usually
+
+        matingCages.forEach((c) => {
+            const isFirstStrain = (c.code !== currentStrainCodeM);
+            if (isFirstStrain) { currentStrainCodeM = c.code; strainCNoM = 1; }
+            else strainCNoM++;
+            
             const isGDone = c.notes && c.notes.includes('G완');
             const codeStr = isGDone ? '' : `${c.code || ''}${c.subId || ''}`;
+            const mTxt = formatGeno(c.m_male_count, c.m_male_geno);
+            const fTxt = formatGeno(c.m_female_count, c.m_female_geno);
             
-            if (c.type === 'mating') {
-                mHtml += `<tr id="row-mating-${c.id}">
-                    <td style="color:#888;">${mNo++}</td>
-                    <td style="font-weight:bold;">${c.code || ''}</td>
-                    <td>${c.m_male_count || ''}</td>
-                    <td>${c.m_male_geno || ''}</td>
-                    <td>${c.m_male_dob ? c.m_male_dob.replace(/-/g, '.') : ''}</td>
-                    <td>${c.m_female_count || ''}</td>
-                    <td>${c.m_female_geno || ''}</td>
-                    <td>${c.m_female_dob ? c.m_female_dob.replace(/-/g, '.') : ''}</td>
-                    <td>${c.dom ? c.dom.replace(/-/g, '.') : ''}</td>
-                    <td>${c.notes || ''}</td>
-                    <td>${codeStr}</td>
-                </tr>`;
-            } else {
-                let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
-                bHtml += `<tr id="row-breeding-${c.id}">
-                    <td style="color:#888;">${bNo++}</td>
-                    <td style="font-weight:bold;">${c.code || ''}</td>
-                    <td>${sex}</td>
-                    <td>${c.bCount || ''}</td>
-                    <td>${c.bDob ? c.bDob.replace(/-/g, '.') : ''}</td>
-                    <td>${c.notes || ''}</td>
-                    <td>${codeStr}</td>
-                </tr>`;
-            }
+            let mD = c.m_male_dob ? new Date(c.m_male_dob) : new Date(0);
+            let fD = c.m_female_dob ? new Date(c.m_female_dob) : new Date(0);
+            let youngerDob = '';
+            if (c.m_male_dob && c.m_female_dob) youngerDob = (mD > fD) ? c.m_male_dob : c.m_female_dob;
+            else if (c.m_male_dob) youngerDob = c.m_male_dob;
+            else if (c.m_female_dob) youngerDob = c.m_female_dob;
+            
+            mHtml += `<tr id="row-mating-${c.id}">
+                <td style="background:${getDayColor(c)}; width:12px;"></td>
+                <td>${globalNoM++}</td>
+                <td>${strainCNoM}</td>
+                <td style="font-weight:bold;">${c.code || ''}</td>
+                <td>${mTxt}</td>
+                <td>${fTxt}</td>
+                <td>${formatDateDots(youngerDob)}</td>
+                <td>${formatDateDots(c.dom)}</td>
+                <td style="color:${getNoteColor(c.notes)}; text-align:left;">${c.notes || ''}</td>
+                <td>${codeStr}</td>
+            </tr>`;
+        });
+
+        breedingCages.forEach((c) => {
+            const isFirstStrain = (c.code !== currentStrainCodeB);
+            if (isFirstStrain) { currentStrainCodeB = c.code; strainCNoB = 1; }
+            else strainCNoB++;
+            
+            const isGDone = c.notes && c.notes.includes('G완');
+            const codeStr = isGDone ? '' : `${c.code || ''}${c.subId || ''}`;
+            let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
+
+            bHtml += `<tr id="row-breeding-${c.id}">
+                <td style="background:${getDayColor(c)}; width:12px;"></td>
+                <td>${globalNoB++}</td>
+                <td>${strainCNoB}</td>
+                <td style="font-weight:bold;">${c.code || ''}</td>
+                <td>${sex}</td>
+                <td>${c.bCount || ''}</td>
+                <td>${formatDateDots(c.bDob)}</td>
+                <td style="color:${getNoteColor(c.notes)}; text-align:left;">${c.notes || ''}</td>
+                <td>${codeStr}</td>
+            </tr>`;
         });
         matingTbody.innerHTML = mHtml;
         breedingTbody.innerHTML = bHtml;
