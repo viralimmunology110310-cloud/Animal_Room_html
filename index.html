@@ -357,7 +357,7 @@
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
         <button class="header-btn" id="btn-sync" onclick="manualSync()">🔄 동기화</button>
         <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
-        <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 일괄 선택</button>
+        <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 선택 모드</button>
         
         <button class="header-btn" onclick="openDayPanel()">📅 요일 배정</button>
         <button class="header-btn" onclick="openMatchPanel(event)">🧬 Strain 매칭표</button>
@@ -767,6 +767,10 @@
 
     let isBatchMode = false;
     let selectedIds = new Set();
+    let selectedSlotIdxs = new Set();
+    let copiedCagesData = [];
+    let historyStack = [];
+    let historyIndex = -1;
     let dragData = { active: false, isDragging: false, items: [], primaryId: null, blockOffset: 0, startX: 0, startY: 0 };
     let marquee = { active: false, startX: 0, startY: 0 };
     let currentHoverIdx = -1;
@@ -799,6 +803,7 @@ document.addEventListener('pointerdown', (e) => {
         marquee.active = true;
         marquee.startX = e.clientX; marquee.startY = e.clientY;
         marquee.initialSelected = new Set(selectedIds);
+        marquee.initialSlotSelected = new Set(selectedSlotIdxs);
 
         const box = document.getElementById('selection-marquee');
         box.style.display = 'block';
@@ -866,7 +871,7 @@ document.addEventListener('pointerdown', (e) => {
         if (isBatchMode) {
             document.body.classList.add('batch-mode'); btn.classList.add('btn-active'); btn.innerText = '✅ 선택 완료'; batchMoveMode = false;
         } else {
-            document.body.classList.remove('batch-mode'); btn.classList.remove('btn-active'); btn.innerText = '☑️ 일괄 선택';
+            document.body.classList.remove('batch-mode'); btn.classList.remove('btn-active'); btn.innerText = '☑️ 선택 모드';
             marquee.active = false; batchMoveMode = false;
             document.getElementById('selection-marquee').style.display = 'none';
             clearSelection();
@@ -879,7 +884,7 @@ document.addEventListener('pointerdown', (e) => {
         batchMoveMode = true; isBatchMode = false;
         document.body.classList.remove('batch-mode');
         const btn = document.getElementById('btn-batch');
-        btn.classList.remove('btn-active'); btn.innerText = '☑️ 일괄 선택';
+        btn.classList.remove('btn-active'); btn.innerText = '☑️ 선택 모드';
         document.getElementById('batch-count').innerText = `${selectedIds.size}개 케이지 이동 준비됨`;
         document.getElementById('contiguous-badge').className = 'contiguous-badge ok';
         document.getElementById('contiguous-badge').innerText = '✦ 드래그하여 이동';
@@ -1175,9 +1180,9 @@ document.addEventListener('pointerdown', (e) => {
         const moveBtn = document.getElementById('btn-batch-move');
         const batchBtn = document.getElementById('btn-batch');
 
-        if (selectedIds.size > 0 && !batchMoveMode) {
+        if ((selectedIds.size > 0 || selectedSlotIdxs.size > 0) && !batchMoveMode) {
             bar.classList.add('show');
-            document.getElementById('batch-count').innerText = `${selectedIds.size}개 케이지 선택됨`;
+            document.getElementById('batch-count').innerText = `${selectedIds.size}개 케이지, ${selectedSlotIdxs.size}개 빈칸 선택됨`;
             const result = checkContiguous();
             if (result.ok) {
                 badge.className = 'contiguous-badge ok'; badge.innerText = '✦ 연속 배치 (이동 가능)';
@@ -1186,7 +1191,7 @@ document.addEventListener('pointerdown', (e) => {
                 badge.className = 'contiguous-badge ng'; badge.innerText = '✕ 비연속 (이동 불가)';
                 moveBtn.setAttribute('disabled', true); batchBtn.setAttribute('disabled', true);
             }
-        } else if (selectedIds.size === 0 && !batchMoveMode) {
+        } else if (selectedIds.size === 0 && selectedSlotIdxs.size === 0 && !batchMoveMode) {
             bar.classList.remove('show');
             badge.className = 'contiguous-badge'; badge.innerText = '';
             batchBtn.removeAttribute('disabled'); moveBtn.style.display = '';
@@ -1194,16 +1199,16 @@ document.addEventListener('pointerdown', (e) => {
     }
 
     function clearSelection() {
-        selectedIds.clear(); batchMoveMode = false;
+        selectedIds.clear(); selectedSlotIdxs.clear(); batchMoveMode = false;
         document.getElementById('btn-batch-move').style.display = '';
         const batchBtn = document.getElementById('btn-batch');
         batchBtn.removeAttribute('disabled');
-        if (!isBatchMode) { batchBtn.classList.remove('btn-active'); batchBtn.innerText = '☑️ 일괄 선택'; }
+        if (!isBatchMode) { batchBtn.classList.remove('btn-active'); batchBtn.innerText = '☑️ 선택 모드'; }
         updateSelectionUI();
     }
 
     function deleteSelectedCages() {
-        if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 모두 삭제하시겠습니까?`)) return;
+        
         const ids = [...selectedIds];
         ids.forEach(id => {
             const c = cages.find(x => x.id === id);
@@ -1232,7 +1237,8 @@ document.addEventListener('pointerdown', (e) => {
             const rChar = String.fromCharCode(64 + Math.floor(i/7) + 1);
             slot.setAttribute('data-label', `${rChar}-${(i%7)+1}`);
             slot.dataset.idx = i;
-            slot.onclick = () => { if (!isBatchMode && !batchMoveMode) { clearSelection(); openModal(null, i); } };
+            slot.onclick = () => { if (isBatchMode) { if (selectedSlotIdxs.has(i)) selectedSlotIdxs.delete(i); else selectedSlotIdxs.add(i); updateSelectionUI(); } else if (!batchMoveMode) { clearSelection(); openModal(null, i); } };
+            if (selectedSlotIdxs.has(i)) slot.classList.add('selected');
             frag.appendChild(slot);
         }
         grid.prepend(frag);
@@ -1439,6 +1445,7 @@ document.addEventListener('pointerdown', (e) => {
             const newId = 'c_' + Date.now();
             if (info.notes) info.noteUpdated = Date.now();
             cages.push({ id: newId, rackId: currentRack, cellIdx: targetSlotIdxForCreate, ...info });
+        saveHistory();
             logAction('create',
                 `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
                 `${info.code}${info.subId} (${info.type})`
@@ -1452,6 +1459,7 @@ document.addEventListener('pointerdown', (e) => {
         const c = cages.find(x => x.id === targetId);
         if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
         cages = cages.filter(c => c.id !== targetId);
+        saveHistory();
         closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
 
@@ -1677,6 +1685,88 @@ document.addEventListener('pointerdown', (e) => {
     window.addEventListener('keydown', (e) => {
         if (modal.style.display !== 'flex') return;
         
+        
+        // --- Shortcuts for Select Mode ---
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'c' || e.key === 'C') {
+                if (isBatchMode && selectedIds.size > 0) {
+                    copiedCagesData = cages.filter(c => selectedIds.has(c.id)).map(c => ({...c}));
+                    showToast(`${copiedCagesData.length}개 케이지가 복사되었습니다.`);
+                }
+                return;
+            }
+            if (e.key === 'v' || e.key === 'V') {
+                if (isBatchMode && copiedCagesData.length > 0 && selectedSlotIdxs.size > 0) {
+                    let sortedSlots = Array.from(selectedSlotIdxs).sort((a,b) => a - b);
+                    let pastedCount = 0;
+                    
+                    if (copiedCagesData.length === 1) {
+                        for (let slotIdx of sortedSlots) {
+                            let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                            let newCage = { ...copiedCagesData[0], id: newId, rackId: currentRack, cellIdx: slotIdx };
+                            cages.push(newCage);
+                            logAction('create', `Cage ${newId} pasted`, `Rack ${currentRack} / slot ${slotIdx} — ${newCage.code}`);
+                            pastedCount++;
+                        }
+                    } else {
+                        for (let i = 0; i < Math.min(copiedCagesData.length, sortedSlots.length); i++) {
+                            let slotIdx = sortedSlots[i];
+                            let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                            let newCage = { ...copiedCagesData[i], id: newId, rackId: currentRack, cellIdx: slotIdx };
+                            cages.push(newCage);
+                            logAction('create', `Cage ${newId} pasted`, `Rack ${currentRack} / slot ${slotIdx} — ${newCage.code}`);
+                            pastedCount++;
+                        }
+                    }
+                    if (pastedCount > 0) {
+                        saveHistory();
+                        renderMainBoard();
+                        debouncedSyncToSheet();
+                        showToast(`${pastedCount}개 케이지가 붙여넣기 되었습니다.`);
+                        selectedSlotIdxs.clear();
+                        updateSelectionUI();
+                    }
+                }
+                return;
+            }
+            if (e.key === 'z' || e.key === 'Z') {
+                if (e.shiftKey) {
+                    redo();
+                } else {
+                    undo();
+                }
+                e.preventDefault();
+                return;
+            }
+            if (e.key === 'y' || e.key === 'Y') {
+                redo();
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (isBatchMode && selectedIds.size > 0) {
+                let deletedCount = 0;
+                cages = cages.filter(c => {
+                    if (selectedIds.has(c.id)) {
+                        logAction('delete', `Cage ${c.id} deleted by shortcut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
+                        deletedCount++;
+                        return false;
+                    }
+                    return true;
+                });
+                if (deletedCount > 0) {
+                    selectedIds.clear();
+                    saveHistory();
+                    renderMainBoard();
+                    debouncedSyncToSheet();
+                    showToast(`${deletedCount}개 케이지가 삭제되었습니다.`);
+                }
+                return;
+            }
+        }
+
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         } else {
