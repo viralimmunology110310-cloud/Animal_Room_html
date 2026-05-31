@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.18</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.19</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -710,11 +710,13 @@
         const splitter = document.getElementById('pane-splitter');
         const sheetPane = document.querySelector('.sheet-pane');
         if (splitter && sheetPane) {
+            window._splitterDragging = false;
             let isDragging = false;
             let startX, startWidth;
             
             splitter.addEventListener('mousedown', (e) => {
                 isDragging = true;
+                window._splitterDragging = true;
                 startX = e.clientX;
                 startWidth = sheetPane.getBoundingClientRect().width;
                 splitter.classList.add('dragging');
@@ -734,6 +736,7 @@
             document.addEventListener('mouseup', () => {
                 if (isDragging) {
                     isDragging = false;
+                    window._splitterDragging = false;
                     splitter.classList.remove('dragging');
                     document.body.style.cursor = '';
                 }
@@ -770,7 +773,7 @@
         }
     });
 
-    const APP_VERSION = "2026-05-31 20:00:00";
+    const APP_VERSION = "2026-06-01 08:58:00";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -2135,30 +2138,37 @@ document.addEventListener('pointerdown', (e) => {
 
     function manualSync() {
         if (!SCRIPT_URL) { alert('Google Apps Script Web App URL이 설정되지 않았습니다.'); return; }
-        if (!isDataLoaded || !isDirty) {
+        if (!isDataLoaded) {
+            // 첫 로드가 아직 안 됐으면 구글 시트에서 불러오기
             syncFromSheet();
         } else {
+            // 첫 로드 이후에는 항상 사이트 → 구글 시트로 밀어넣기(push)
             syncToSheet().finally(() => { isDirty = false; });
         }
     }
 
-    // 실시간 자동 동기화 (10초마다 백그라운드 체크)
+    // 실시간 자동 동기화: 10초마다 구글 시트에서 최신 데이터 불러오기(pull)
+    // 단, 내가 수정 중이거나 드래그 중이거나 모달이 열려있으면 잠시 멈춤
     setInterval(() => {
         if (!isDataLoaded || !SCRIPT_URL) return;
-        if (!isDirty && !isDragging && !batchMoveMode && document.visibilityState === 'visible') {
-            const editModal = document.getElementById('edit-modal');
-            const matchPanel = document.getElementById('match-panel');
-            const scheduleModal = document.getElementById('schedule-modal');
-            if ((!editModal || !editModal.classList.contains('open')) && 
-                (!matchPanel || !matchPanel.classList.contains('open')) && 
-                (!scheduleModal || !scheduleModal.classList.contains('open'))) {
-                syncFromSheet(true);
-            }
-        }
+        if (isDirty) return; // 내가 수정 중이면 불러오지 않음
+        if (window._splitterDragging) return; // 나눔바 드래그 중
+        if (batchMoveMode) return; // 일괄 이동 중
+        if (document.visibilityState !== 'visible') return; // 탭이 백그라운드면 안함
+        // 모달이 열려있으면 안함
+        const editModal = document.getElementById('edit-modal');
+        const matchPanel = document.getElementById('match-panel');
+        const scheduleModal = document.getElementById('schedule-modal');
+        if ((editModal && editModal.classList.contains('open')) || 
+            (matchPanel && matchPanel.classList.contains('open')) || 
+            (scheduleModal && scheduleModal.classList.contains('open'))) return;
+        syncFromSheet(true);
     }, 10000);
 
+    // 처음 로드 시 구글 시트에서 데이터 불러오기
     window.addEventListener('load', () => { if (SCRIPT_URL) syncFromSheet(); });
-    window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SCRIPT_URL) syncToSheet(); });
+    // 탭을 닫거나 다른 탭으로 이동할 때, 수정사항이 있으면 저장
+    window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SCRIPT_URL && isDirty) { syncToSheet(); isDirty = false; } });
 
     buildLeftSidebar();
     renderMainBoard();
