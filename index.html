@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.14</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.15</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -752,7 +752,7 @@
                     newSize = Math.max(30, Math.min(92, newSize));
                     grid.style.setProperty('--cell-size', newSize + 'px');
                     
-                    if (window.cages) {
+                    if (typeof cages !== 'undefined' && cages) {
                         cages.forEach(cage => {
                             if (cage.rackId === currentRack) {
                                 const el = document.getElementById(cage.id);
@@ -770,7 +770,7 @@
         }
     });
 
-    const APP_VERSION = "2026-05-31 19:40:44";
+    const APP_VERSION = "2026-05-31 19:47:00";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
