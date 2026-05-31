@@ -398,13 +398,13 @@
         .grid-7 {
             --cell-size: 92px; /* dynamically updated by JS */
             --cell-gap: 10px;
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            width: 100%; min-width: 320px; max-width: 704px; 
+            display: grid; grid-template-columns: repeat(7, var(--cell-size));
+            width: max-content;
             gap: var(--cell-gap);
             position: relative; justify-content: center; margin: 0 auto;
         }
         .slot {
-            width: 100%; aspect-ratio: 1/1; border-radius: 20px; background: var(--slot-bg);
+            width: var(--cell-size); height: var(--cell-size); border-radius: 20px; background: var(--slot-bg);
             border: 1px dashed var(--slot-border); position: relative;
             display: flex; align-items: center; justify-content: center; box-sizing: border-box;
         }
@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.9</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.10</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -705,7 +705,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 19:11:18";
+    const APP_VERSION = "2026-05-31 19:19:44";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
