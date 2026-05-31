@@ -1796,40 +1796,99 @@ document.addEventListener('pointerdown', (e) => {
     };
 
     window.addEventListener('keydown', (e) => {
-        
-        
         // --- Shortcuts for Select Mode ---
+        // Prevent shortcuts if typing in input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
         if (e.ctrlKey || e.metaKey) {
             if (e.key === 'c' || e.key === 'C') {
                 if (isBatchMode && selectedIds.size > 0) {
-                    copiedCagesData = cages.filter(c => selectedIds.has(c.id)).map(c => ({...c}));
+                    let minIdx = 999999;
+                    let targetCages = cages.filter(c => selectedIds.has(c.id));
+                    targetCages.forEach(c => {
+                        if (c.cellIdx < minIdx) minIdx = c.cellIdx;
+                    });
+                    
+                    copiedCagesData = targetCages.map(c => {
+                        let clone = {...c};
+                        clone.relX = (c.cellIdx % 7) - (minIdx % 7);
+                        clone.relY = Math.floor(c.cellIdx / 7) - Math.floor(minIdx / 7);
+                        return clone;
+                    });
+                    
                     showCopyEffect(`✨ ${copiedCagesData.length}개 케이지 복사됨! ✨`);
+                    selectedIds.clear(); selectedSlotIdxs.clear();
+                    updateSelectionUI();
                 }
+                e.preventDefault();
+                return;
+            }
+            if (e.key === 'x' || e.key === 'X') {
+                if (isBatchMode && selectedIds.size > 0) {
+                    let minIdx = 999999;
+                    let targetCages = cages.filter(c => selectedIds.has(c.id));
+                    targetCages.forEach(c => {
+                        if (c.cellIdx < minIdx) minIdx = c.cellIdx;
+                    });
+                    
+                    copiedCagesData = targetCages.map(c => {
+                        let clone = {...c};
+                        clone.relX = (c.cellIdx % 7) - (minIdx % 7);
+                        clone.relY = Math.floor(c.cellIdx / 7) - Math.floor(minIdx / 7);
+                        return clone;
+                    });
+                    
+                    let deletedCount = 0;
+                    cages = cages.filter(c => {
+                        if (selectedIds.has(c.id)) {
+                            logAction('delete', `Cage ${c.id} cut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
+                            deletedCount++;
+                            return false;
+                        }
+                        return true;
+                    });
+                    
+                    selectedIds.clear(); selectedSlotIdxs.clear();
+                    saveHistory();
+                    renderMainBoard();
+                    debouncedSyncToSheet();
+                    showCopyEffect(`✂️ ${copiedCagesData.length}개 케이지 잘라내기 됨!`);
+                }
+                e.preventDefault();
                 return;
             }
             if (e.key === 'v' || e.key === 'V') {
                 if (isBatchMode && copiedCagesData.length > 0 && selectedSlotIdxs.size > 0) {
                     let sortedSlots = Array.from(selectedSlotIdxs).sort((a,b) => a - b);
-                    let pastedCount = 0;
+                    let anchorSlot = sortedSlots[0]; // Paste relative to the first selected slot
+                    let anchorX = anchorSlot % 7;
+                    let anchorY = Math.floor(anchorSlot / 7);
                     
-                    if (copiedCagesData.length === 1) {
-                        for (let slotIdx of sortedSlots) {
-                            let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                            let newCage = { ...copiedCagesData[0], id: newId, rackId: currentRack, cellIdx: slotIdx };
-                            cages.push(newCage);
-                            logAction('create', `Cage ${newId} pasted`, `Rack ${currentRack} / slot ${slotIdx} — ${newCage.code}`);
-                            pastedCount++;
+                    let pastedCount = 0;
+                    for (let cData of copiedCagesData) {
+                        let targetX = anchorX + (cData.relX || 0);
+                        let targetY = anchorY + (cData.relY || 0);
+                        if (targetX < 0) targetX = 0;
+                        if (targetX > 6) targetX = 6;
+                        if (targetY < 0) targetY = 0;
+                        
+                        let targetSlot = targetY * 7 + targetX;
+                        
+                        // Find closest empty slot
+                        let finalSlot = targetSlot;
+                        while (cages.some(c => c.rackId === currentRack && c.cellIdx === finalSlot)) {
+                            finalSlot++;
                         }
-                    } else {
-                        for (let i = 0; i < Math.min(copiedCagesData.length, sortedSlots.length); i++) {
-                            let slotIdx = sortedSlots[i];
-                            let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
-                            let newCage = { ...copiedCagesData[i], id: newId, rackId: currentRack, cellIdx: slotIdx };
-                            cages.push(newCage);
-                            logAction('create', `Cage ${newId} pasted`, `Rack ${currentRack} / slot ${slotIdx} — ${newCage.code}`);
-                            pastedCount++;
-                        }
+                        
+                        let newId = 'c_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                        let newCage = { ...cData, id: newId, rackId: currentRack, cellIdx: finalSlot };
+                        delete newCage.relX; delete newCage.relY;
+                        
+                        cages.push(newCage);
+                        logAction('create', `Cage ${newId} pasted`, `Rack ${currentRack} / slot ${finalSlot} — ${newCage.code}`);
+                        pastedCount++;
                     }
+                    
                     if (pastedCount > 0) {
                         saveHistory();
                         renderMainBoard();
@@ -1839,6 +1898,7 @@ document.addEventListener('pointerdown', (e) => {
                         updateSelectionUI();
                     }
                 }
+                e.preventDefault();
                 return;
             }
             if (e.key === 'z' || e.key === 'Z') {
@@ -1869,16 +1929,18 @@ document.addEventListener('pointerdown', (e) => {
                     return true;
                 });
                 if (deletedCount > 0) {
-                    selectedIds.clear();
+                    selectedIds.clear(); selectedSlotIdxs.clear();
                     saveHistory();
                     renderMainBoard();
                     debouncedSyncToSheet();
                     showDeleteFlash(`🔥 ${deletedCount}개 케이지 삭제됨! 🔥`);
                 }
+                e.preventDefault(); // Prevent browser back
                 return;
             }
         }
-        if (modal.style.display !== 'flex') return;
+
+
 
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
