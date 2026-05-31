@@ -355,7 +355,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.4.3.2</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.5.2</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -394,22 +394,34 @@
             <div class="grid-7" id="main-grid"></div>
         </div>
     </div>
+    <div class="splitter" id="pane-splitter"></div>
     <div class="sheet-pane">
-        <div class="sheet-header">📊 실시간 구글 시트 데이터</div>
-        <div class="sheet-table-wrapper">
-            <table class="sheet-table">
-                <thead>
-                    <tr>
-                        <th>Rack</th>
-                        <th>Type</th>
-                        <th>Code</th>
-                        <th>Sub</th>
-                        <th style="min-width: 60px;">Notes</th>
-                    </tr>
-                </thead>
-                <tbody id="sheet-table-body">
-                </tbody>
-            </table>
+        <div class="sheet-section">
+            <div class="sheet-header">Mating (교배)</div>
+            <div class="sheet-table-wrapper" id="mating-wrapper">
+                <table class="sheet-table" id="mating-table">
+                    <thead>
+                        <tr>
+                            <th>No</th><th>Strain</th><th>수컷수</th><th>수컷Geno</th><th>수컷생일</th>
+                            <th>암컷수</th><th>암컷Geno</th><th>암컷생일</th><th>교배일</th><th>특이사항</th><th>코드</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mating-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="sheet-section" style="border-top: 2px solid #ccc;">
+            <div class="sheet-header">Breeding (유지/번식)</div>
+            <div class="sheet-table-wrapper" id="breeding-wrapper">
+                <table class="sheet-table" id="breeding-table">
+                    <thead>
+                        <tr>
+                            <th>No</th><th>Strain</th><th>성별</th><th>마리수</th><th>생일</th><th>특이사항</th><th>코드</th>
+                        </tr>
+                    </thead>
+                    <tbody id="breeding-table-body"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -624,7 +636,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-05-31 18:35:12";
+    const APP_VERSION = "2026-05-31 18:45:19";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -1061,14 +1073,14 @@ document.addEventListener('pointerdown', (e) => {
     // ── Drag engine ───────────────────────────────
     function setupDragEngine(cageEl, cageId) {
         cageEl.addEventListener('mouseenter', () => {
-            const row = document.getElementById('row-' + cageId);
+            const row = document.getElementById('row-mating-' + cageId) || document.getElementById('row-breeding-' + cageId);
             if (row) {
                 row.classList.add('highlighted-row');
-                row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
         cageEl.addEventListener('mouseleave', () => {
-            const row = document.getElementById('row-' + cageId);
+            const row = document.getElementById('row-mating-' + cageId) || document.getElementById('row-breeding-' + cageId);
             if (row) row.classList.remove('highlighted-row');
         });
 
@@ -1438,28 +1450,51 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Render ────────────────────────────────────
         function renderSheetPane() {
-        const tbody = document.getElementById('sheet-table-body');
-        if (!tbody) return;
-        let html = '';
+        const matingTbody = document.getElementById('mating-table-body');
+        const breedingTbody = document.getElementById('breeding-table-body');
+        if (!matingTbody || !breedingTbody) return;
+        
         const sortedCages = [...cages].sort((a,b) => {
             if (a.rackId !== b.rackId) return a.rackId.localeCompare(b.rackId);
             return a.cellIdx - b.cellIdx;
         });
         
+        let mHtml = ''; let bHtml = '';
+        let mNo = 1; let bNo = 1;
+        
         sortedCages.forEach(c => {
-            const rowLabel = String.fromCharCode(64 + Math.floor(c.cellIdx/7) + 1);
-            const colLabel = (c.cellIdx % 7) + 1;
-            const pos = `${c.rackId} : ${rowLabel}-${colLabel}`;
-            const bClass = c.type === 'mating' ? 'mating' : (c.type === 'sentinel' ? 'sentinel' : 'breeding');
-            html += `<tr id="row-${c.id}">
-                        <td>${pos}</td>
-                        <td><span class="badge-type ${bClass}">${(c.type || "").substring(0,3)}</span></td>
-                        <td style="font-weight:bold;">${c.code || ''}</td>
-                        <td>${c.subId || ''}</td>
-                        <td title="${c.notes || ''}">${c.notes || ''}</td>
-                     </tr>`;
+            const isGDone = c.notes && c.notes.includes('G완');
+            const codeStr = isGDone ? '' : `${c.code || ''}${c.subId || ''}`;
+            
+            if (c.type === 'mating') {
+                mHtml += `<tr id="row-mating-${c.id}">
+                    <td style="color:#888;">${mNo++}</td>
+                    <td style="font-weight:bold;">${c.code || ''}</td>
+                    <td>${c.m_male_count || ''}</td>
+                    <td>${c.m_male_geno || ''}</td>
+                    <td>${c.m_male_dob ? c.m_male_dob.replace(/-/g, '.') : ''}</td>
+                    <td>${c.m_female_count || ''}</td>
+                    <td>${c.m_female_geno || ''}</td>
+                    <td>${c.m_female_dob ? c.m_female_dob.replace(/-/g, '.') : ''}</td>
+                    <td>${c.dom ? c.dom.replace(/-/g, '.') : ''}</td>
+                    <td>${c.notes || ''}</td>
+                    <td>${codeStr}</td>
+                </tr>`;
+            } else {
+                let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
+                bHtml += `<tr id="row-breeding-${c.id}">
+                    <td style="color:#888;">${bNo++}</td>
+                    <td style="font-weight:bold;">${c.code || ''}</td>
+                    <td>${sex}</td>
+                    <td>${c.bCount || ''}</td>
+                    <td>${c.bDob ? c.bDob.replace(/-/g, '.') : ''}</td>
+                    <td>${c.notes || ''}</td>
+                    <td>${codeStr}</td>
+                </tr>`;
+            }
         });
-        tbody.innerHTML = html;
+        matingTbody.innerHTML = mHtml;
+        breedingTbody.innerHTML = bHtml;
     }
 
     function renderMainBoard() {
