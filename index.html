@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.16</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.17</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -770,7 +770,7 @@
         }
     });
 
-    const APP_VERSION = "2026-05-31 19:50:00";
+    const APP_VERSION = "2026-05-31 19:56:00";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -2067,10 +2067,12 @@ document.addEventListener('pointerdown', (e) => {
 
 
     let syncTimeout = null;
+    let isDirty = false;
     function debouncedSyncToSheet() {
+        isDirty = true;
         if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
-            syncToSheet();
+            syncToSheet().finally(() => { isDirty = false; });
         }, 3000); // 3초 뒤에 동기화
     }
     let isDataLoaded = false;
@@ -2096,44 +2098,62 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    async function syncFromSheet() {
+    async function syncFromSheet(silent = false) {
         if (!SCRIPT_URL) return;
         const syncBtn = document.getElementById('btn-sync');
         try {
-            syncBtn.innerText = '🔄 불러오는 중...';
+            if (!silent) syncBtn.innerText = '🔄 불러오는 중...';
             const res = await fetch(SCRIPT_URL + '?action=load&key=' + API_KEY, {
                 redirect: 'follow'
             });
             const data = await res.json();
             if (data && data.cages) {
-                if (data.cages) cages = data.cages;
-                if (data.rackRows) RACK_ROWS = data.rackRows;
-                // STRAIN_MAP는 HTML 내부 하드코딩된 값을 절대적 기준으로 사용 (구글 시트에서 불러오지 않음)
-                if (data.dayMap && Object.keys(data.dayMap).length > 0) dayMap = data.dayMap;
-                if (data.wtRanges && Object.keys(data.wtRanges).length > 0) wtRanges = data.wtRanges;
-                if (data.logs) {
-                    editLog = data.logs;
-                    localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
-                    refreshLogPanel();
+                const newDataStr = JSON.stringify(data.cages);
+                const oldDataStr = JSON.stringify(cages);
+                if (newDataStr !== oldDataStr) {
+                    cages = data.cages;
+                    if (data.rackRows) RACK_ROWS = data.rackRows;
+                    if (data.dayMap && Object.keys(data.dayMap).length > 0) dayMap = data.dayMap;
+                    if (data.wtRanges && Object.keys(data.wtRanges).length > 0) wtRanges = data.wtRanges;
+                    if (data.logs) {
+                        editLog = data.logs;
+                        localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
+                        refreshLogPanel();
+                    }
+                    renderMainBoard(); buildLeftSidebar();
                 }
-                renderMainBoard(); buildLeftSidebar();
             }
             isDataLoaded = true;
-            syncBtn.innerText = '🔄 동기화';
+            if (!silent) syncBtn.innerText = '🔄 동기화';
         } catch(e) {
             console.error('Load failed', e);
-            syncBtn.innerText = '⚠️ 불러오기 실패';
+            if (!silent) syncBtn.innerText = '⚠️ 불러오기 실패';
         }
     }
 
     function manualSync() {
         if (!SCRIPT_URL) { alert('Google Apps Script Web App URL이 설정되지 않았습니다.'); return; }
-        if (!isDataLoaded) {
+        if (!isDataLoaded || !isDirty) {
             syncFromSheet();
         } else {
-            syncToSheet();
+            syncToSheet().finally(() => { isDirty = false; });
         }
     }
+
+    // 실시간 자동 동기화 (10초마다 백그라운드 체크)
+    setInterval(() => {
+        if (!isDataLoaded || !SCRIPT_URL) return;
+        if (!isDirty && !isDragging && !batchMoveMode && document.visibilityState === 'visible') {
+            const editModal = document.getElementById('edit-modal');
+            const matchPanel = document.getElementById('match-panel');
+            const scheduleModal = document.getElementById('schedule-modal');
+            if ((!editModal || !editModal.classList.contains('open')) && 
+                (!matchPanel || !matchPanel.classList.contains('open')) && 
+                (!scheduleModal || !scheduleModal.classList.contains('open'))) {
+                syncFromSheet(true);
+            }
+        }
+    }, 10000);
 
     window.addEventListener('load', () => { if (SCRIPT_URL) syncFromSheet(); });
     window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SCRIPT_URL) syncToSheet(); });
