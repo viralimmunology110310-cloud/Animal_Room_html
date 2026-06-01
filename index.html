@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.1</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.5</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2086,6 +2086,7 @@ document.addEventListener('pointerdown', (e) => {
             bDob: document.getElementById('b-dob').value
         };
 
+        startTransaction();
         if (id) {
             const prev = cages.find(x => x.id === id);
             // ── Edit log: 변경된 필드 요약 ──
@@ -2117,7 +2118,6 @@ document.addEventListener('pointerdown', (e) => {
             const newId = 'c_' + Date.now();
             if (info.notes) info.noteUpdated = Date.now();
             cages.push({ id: newId, rackId: currentRack, cellIdx: targetSlotIdxForCreate, ...info });
-        saveHistory();
             if (info.type !== 'sentinel') {
                 logAction('create',
                     `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
@@ -2125,15 +2125,17 @@ document.addEventListener('pointerdown', (e) => {
                 );
             }
         }
+        commitTransaction();
         closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
 
     function deleteCage() {
+        startTransaction();
         const targetId = document.getElementById('m-id').value;
         const c = cages.find(x => x.id === targetId);
         if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
         cages = cages.filter(c => c.id !== targetId);
-        saveHistory();
+        commitTransaction();
         closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
     }
 
@@ -2471,7 +2473,7 @@ document.addEventListener('pointerdown', (e) => {
                         return clone;
                     });
                     
-                    let deletedCount = 0;
+                    startTransaction();
                     cages = cages.filter(c => {
                         if (selectedIds.has(c.id)) {
                             logAction('delete', `Cage ${c.id} cut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -2482,7 +2484,7 @@ document.addEventListener('pointerdown', (e) => {
                     });
                     
                     selectedIds.clear(); selectedSlotIdxs.clear();
-                    saveHistory();
+                    commitTransaction();
                     renderMainBoard();
                     debouncedSyncToSheet();
                     showCopyEffect(`✂️ ${copiedCagesData.length}개 케이지 잘라내기 됨!`);
@@ -2498,6 +2500,7 @@ document.addEventListener('pointerdown', (e) => {
                     let anchorY = Math.floor(anchorSlot / 7);
                     
                     let pastedCount = 0;
+                    startTransaction();
                     for (let cData of copiedCagesData) {
                         let targetX = anchorX + (cData.relX || 0);
                         let targetY = anchorY + (cData.relY || 0);
@@ -2523,7 +2526,7 @@ document.addEventListener('pointerdown', (e) => {
                     }
                     
                     if (pastedCount > 0) {
-                        saveHistory();
+                        commitTransaction();
                         renderMainBoard();
                         debouncedSyncToSheet();
                         showCopyEffect(`✨ ${pastedCount}개 케이지 붙여넣기 됨! ✨`);
@@ -2551,8 +2554,9 @@ document.addEventListener('pointerdown', (e) => {
         }
         
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            if (isBatchMode && selectedIds.size > 0) {
+                if (isBatchMode && selectedIds.size > 0) {
                 let deletedCount = 0;
+                startTransaction();
                 cages = cages.filter(c => {
                     if (selectedIds.has(c.id)) {
                         logAction('delete', `Cage ${c.id} deleted by shortcut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -2563,7 +2567,7 @@ document.addEventListener('pointerdown', (e) => {
                 });
                 if (deletedCount > 0) {
                     selectedIds.clear(); selectedSlotIdxs.clear();
-                    saveHistory();
+                    commitTransaction();
                     renderMainBoard();
                     debouncedSyncToSheet();
                     showDeleteFlash(`🔥 ${deletedCount}개 케이지 삭제됨! 🔥`);
