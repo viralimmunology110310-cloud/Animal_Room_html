@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.1</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.2</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2041,7 +2041,7 @@ document.addEventListener('pointerdown', (e) => {
             if (prev.notes !== info.notes) {
                 changed.push('notes updated');
                 info.noteUpdated = Date.now();
-            } else {
+            } else if (prev.noteUpdated !== undefined) {
                 info.noteUpdated = prev.noteUpdated;
             }
             if (prev.dom !== info.dom) changed.push(`DOM: ${prev.dom||'—'}→${info.dom||'—'}`);
@@ -2132,6 +2132,20 @@ document.addEventListener('pointerdown', (e) => {
         
         document.getElementById('match-panel').classList.remove('open');
         updateGenotypeDisplay();
+    }
+
+    function syncDeltaToFirebase(changes) {
+        if (!changes || changes.length === 0 || !isDataLoaded) return;
+        let updates = {};
+        changes.forEach(change => {
+            updates['cages/' + change.id] = change.newData;
+        });
+        updates['lastUpdated'] = Date.now();
+        // Remove undefined values to prevent Firebase rejection
+        updates = JSON.parse(JSON.stringify(updates));
+        fbDataRef.update(updates).then(() => {
+            debouncedPushToSheet();
+        }).catch(console.error);
     }
 
     // ── Stats ─────────────────────────────────────
@@ -2343,7 +2357,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 10:25:00";
+    const APP_VERSION = 'v2.6.2';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
