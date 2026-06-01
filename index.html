@@ -431,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.4</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.5</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -1779,15 +1779,15 @@ document.addEventListener('pointerdown', (e) => {
             const isGDone = STRAIN_MAP[c.code] && STRAIN_MAP[c.code].g_done;
             const displayCode = isGDone ? `${c.code || ''}(G완)` : (c.code || '');
             
-            const mTxt = formatGeno(c.m_male_count, c.m_male_geno);
-            const fTxt = formatGeno(c.m_female_count, c.m_female_geno);
+            const mTxt = formatGeno(c.mMale, c.mGeno);
+            const fTxt = formatGeno(c.mFemale, c.fGeno);
             
-            let mD = c.m_male_dob ? new Date(c.m_male_dob) : new Date(0);
-            let fD = c.m_female_dob ? new Date(c.m_female_dob) : new Date(0);
+            let mD = c.mDob ? new Date(c.mDob) : new Date(0);
+            let fD = c.fDob ? new Date(c.fDob) : new Date(0);
             let youngerDob = '';
-            if (c.m_male_dob && c.m_female_dob) youngerDob = (mD > fD) ? c.m_male_dob : c.m_female_dob;
-            else if (c.m_male_dob) youngerDob = c.m_male_dob;
-            else if (c.m_female_dob) youngerDob = c.m_female_dob;
+            if (c.mDob && c.fDob) youngerDob = (mD > fD) ? c.mDob : c.fDob;
+            else if (c.mDob) youngerDob = c.mDob;
+            else if (c.fDob) youngerDob = c.fDob;
             
             mHtml += `<tr id="row-mating-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
@@ -2390,7 +2390,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.4';
+    const APP_VERSION = 'v2.6.5';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
