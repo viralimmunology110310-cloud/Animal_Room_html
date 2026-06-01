@@ -113,6 +113,11 @@
             color: #1c1c1e; border: 1px solid rgba(255, 235, 102, 0.9); border-bottom: 2px solid #b38e00;
             box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 5px 15px rgba(255, 214, 10, 0.1), 0 8px 20px rgba(0, 0, 0, 0.4);
         }
+        .cage.experiment { 
+            background: linear-gradient(135deg, #d38deb 0%, #af52de 35%, #8f33bd 50%, #af52de 65%, #c06bee 100%);
+            color: #ffffff; border: 1px solid rgba(211, 141, 235, 0.9); border-bottom: 2px solid #7a20a6;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 5px 15px rgba(175, 82, 222, 0.1), 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
         .cage.floating {
             cursor: grabbing; z-index: 9999 !important;
             transform: scale(1.1) translateY(-4px); box-shadow: 0 25px 45px rgba(0,0,0,0.6);
@@ -431,7 +436,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.0</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.1</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -442,6 +447,9 @@
         
         <button class="header-btn" onclick="openDayPanel()">📅 요일 배정</button>
         <button class="header-btn" onclick="openMatchPanel(event)">🧬 Strain 매칭표</button>
+        <label style="color:var(--text-color); font-size:12px; margin-left:10px; display:inline-flex; align-items:center; gap:4px; font-weight:bold; cursor:pointer;">
+            <input type="checkbox" id="toggle-highlight" checked> <span>행 호버 연동</span>
+        </label>
 
     </div>
 </header>
@@ -592,6 +600,7 @@
                     <option value="breeding">Breeding (생산/유지용 — 흰색)</option>
                     <option value="mating">Mating (교배용 — 노란색)</option>
                     <option value="sentinel">Sentinel (모니터링 — 초록색)</option>
+                    <option value="experiment">실험/이동용 (보라색)</option>
                 </select>
             </div>
             <div class="form-group" style="flex:0.6;">
@@ -663,8 +672,6 @@
                     <select id="b-gender" class="form-control">
                         <option value="male">수컷 (♂)</option>
                         <option value="female">암컷 (♀)</option>
-                        <option value="mixed">암수혼합</option>
-                        <option value="unknown">미상</option>
                     </select>
                 </div>
                 <div class="form-group" style="flex:1;">
@@ -1863,6 +1870,9 @@ document.addEventListener('pointerdown', (e) => {
     }
 
     window.hoverSidebarRow = function(cageId) {
+        const toggle = document.getElementById('toggle-highlight');
+        if (toggle && !toggle.checked) return;
+
         const c = cages.find(x => x.id === cageId);
         if (!c) return;
         if (c.rackId !== currentRack) {
@@ -2449,7 +2459,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.0';
+    const APP_VERSION = 'v2.7.1';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
