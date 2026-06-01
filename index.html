@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.5.2</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.0</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -846,6 +846,19 @@
             if (historyStack.length > 50) { historyStack.shift(); historyIndex--; }
         }
         currentTxCages = null;
+        return changes;
+    }
+
+    function syncDeltaToFirebase(changes) {
+        if (!changes || changes.length === 0 || !isDataLoaded) return;
+        let updates = {};
+        changes.forEach(change => {
+            updates['cages/' + change.id] = change.newData;
+        });
+        updates['lastUpdated'] = Date.now();
+        fbDataRef.update(updates).then(() => {
+            debouncedPushToSheet();
+        }).catch(console.error);
     }
 
     function applyDelta(actionChanges, isUndo) {
@@ -890,7 +903,9 @@
         if (historyIndex >= 0) {
             const action = historyStack[historyIndex];
             if (applyDelta(action.changes, true)) {
-                renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+                renderMainBoard(); buildLeftSidebar(); 
+                let invertedChanges = action.changes.map(ch => ({ id: ch.id, newData: ch.oldData }));
+                syncDeltaToFirebase(invertedChanges);
             }
             historyIndex--;
         }
@@ -901,7 +916,8 @@
             historyIndex++;
             const action = historyStack[historyIndex];
             if (applyDelta(action.changes, false)) {
-                renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+                renderMainBoard(); buildLeftSidebar();
+                syncDeltaToFirebase(action.changes);
             }
         }
     }
@@ -1464,9 +1480,9 @@ document.addEventListener('pointerdown', (e) => {
             if (dc > 0) {
                 batchMoveMode = false;
                 clearSelection();
-                commitTransaction();
+                let changes = commitTransaction();
                 renderMainBoard();
-                debouncedSyncToSheet();
+                syncDeltaToFirebase(changes);
             }
         };
                 if (emptyLeft.length >= occupants.length) {
@@ -1537,9 +1553,9 @@ document.addEventListener('pointerdown', (e) => {
             
             if (deletedCount > 0) {
                 selectedIds.clear(); selectedSlotIdxs.clear();
-                commitTransaction();
+                let changes = commitTransaction();
                 renderMainBoard();
-                debouncedSyncToSheet();
+                syncDeltaToFirebase(changes);
                 showDeleteFlash(`🔥 ${deletedCount}개 케이지 삭제됨! 🔥`);
             }
             return;
@@ -1612,9 +1628,9 @@ document.addEventListener('pointerdown', (e) => {
         }
 
         if (batchMoveMode) { batchMoveMode = false; clearSelection(); } else clearSelection();
-        commitTransaction(); // Save local history for undo
+        let changes = commitTransaction(); // Save local history for undo
         renderMainBoard();
-        debouncedSyncToSheet(); // Sync to Firebase!
+        syncDeltaToFirebase(changes); // Sync to Firebase!
         document.querySelectorAll('.map-rack').forEach(el => el.classList.remove('drag-over'));
     }
 
@@ -2053,8 +2069,8 @@ document.addEventListener('pointerdown', (e) => {
                 );
             }
         }
-        commitTransaction();
-        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+        let changes = commitTransaction();
+        closeModal(); renderMainBoard(); buildLeftSidebar(); syncDeltaToFirebase(changes);
     }
 
     function deleteCage() {
@@ -2063,8 +2079,8 @@ document.addEventListener('pointerdown', (e) => {
         const c = cages.find(x => x.id === targetId);
         if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
         cages = cages.filter(c => c.id !== targetId);
-        commitTransaction();
-        closeModal(); renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+        let changes = commitTransaction();
+        closeModal(); renderMainBoard(); buildLeftSidebar(); syncDeltaToFirebase(changes);
     }
 
     // ── Strain panel ──────────────────────────────
@@ -2176,17 +2192,22 @@ document.addEventListener('pointerdown', (e) => {
         }, 10); // 거의 즉시 Firebase에 저장
     }
 
-    function saveToFirebase() {
+    function saveToFirebase(includeCages = false) {
         if (!isDataLoaded) return;
-        fbDataRef.set({
-            cages: cages,
+        let updates = {
             rackRows: RACK_ROWS,
             dayMap: dayMap,
             wtRanges: wtRanges,
             logs: editLog,
             lastUpdated: Date.now()
-        }).then(() => {
-            console.log('Firebase 저장 완료');
+        };
+        if (includeCages) {
+            let cagesObj = {};
+            cages.forEach(c => cagesObj[c.id] = c);
+            updates.cages = cagesObj;
+        }
+        fbDataRef.update(updates).then(() => {
+            console.log('Firebase 전체 동기화 완료');
             debouncedPushToSheet(); // Firebase 저장 성공 시 구글 시트도 자동 업데이트
         }).catch((err) => {
             console.error('Firebase 저장 실패', err);
@@ -2219,14 +2240,18 @@ document.addEventListener('pointerdown', (e) => {
 
         // 전체 데이터 비교
         const newDataStr = JSON.stringify({
-            cages: data.cages || [],
+            cages: data.cages || {},
             rackRows: data.rackRows || RACK_ROWS,
             dayMap: data.dayMap || {},
             wtRanges: data.wtRanges || {},
             logs: data.logs || []
         });
+        
+        // 로컬 cages를 객체로 만들어 비교 (순서 무관)
+        let localCagesObj = {};
+        cages.forEach(c => localCagesObj[c.id] = c);
         const oldDataStr = JSON.stringify({
-            cages: cages,
+            cages: localCagesObj,
             rackRows: RACK_ROWS,
             dayMap: dayMap,
             wtRanges: wtRanges,
@@ -2234,7 +2259,9 @@ document.addEventListener('pointerdown', (e) => {
         });
 
         if (newDataStr !== oldDataStr) {
-            cages = data.cages || [];
+            let rawCages = data.cages || {};
+            cages = Array.isArray(rawCages) ? rawCages.filter(c => c) : Object.values(rawCages).filter(c => c);
+
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
             if (data.wtRanges) wtRanges = data.wtRanges;
@@ -2269,7 +2296,7 @@ document.addEventListener('pointerdown', (e) => {
                 if (data.wtRanges) wtRanges = data.wtRanges;
                 if (data.logs) editLog = data.logs;
                 isDataLoaded = true;
-                saveToFirebase(); // Firebase에 저장하여 이후부터 Firebase가 메인
+                saveToFirebase(true); // Firebase에 저장하여 이후부터 Firebase가 메인
                 renderMainBoard(); buildLeftSidebar();
                 console.log('구글 시트 → Firebase 마이그레이션 완료!');
             } else {
@@ -2412,9 +2439,9 @@ document.addEventListener('pointerdown', (e) => {
                     });
                     
                     selectedIds.clear(); selectedSlotIdxs.clear();
-                    commitTransaction();
+                    let changes = commitTransaction();
                     renderMainBoard();
-                    debouncedSyncToSheet();
+                    syncDeltaToFirebase(changes);
                     showCopyEffect(`✂️ ${copiedCagesData.length}개 케이지 잘라내기 됨!`);
                 }
                 e.preventDefault();
@@ -2454,9 +2481,9 @@ document.addEventListener('pointerdown', (e) => {
                     }
                     
                     if (pastedCount > 0) {
-                        commitTransaction();
+                        let changes = commitTransaction();
                         renderMainBoard();
-                        debouncedSyncToSheet();
+                        syncDeltaToFirebase(changes);
                         showCopyEffect(`✨ ${pastedCount}개 케이지 붙여넣기 됨! ✨`);
                         selectedSlotIdxs.clear();
                         updateSelectionUI();
@@ -2495,9 +2522,9 @@ document.addEventListener('pointerdown', (e) => {
                 });
                 if (deletedCount > 0) {
                     selectedIds.clear(); selectedSlotIdxs.clear();
-                    commitTransaction();
+                    let changes = commitTransaction();
                     renderMainBoard();
-                    debouncedSyncToSheet();
+                    syncDeltaToFirebase(changes);
                     showDeleteFlash(`🔥 ${deletedCount}개 케이지 삭제됨! 🔥`);
                 }
                 e.preventDefault(); // Prevent browser back
