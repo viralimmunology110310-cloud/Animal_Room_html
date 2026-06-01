@@ -427,6 +427,7 @@
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
+        <div id="connection-status" style="display:inline-block; font-size:12px; margin-right:10px; font-weight:bold; padding: 4px 8px; border-radius:4px; background:var(--header-bg); color:var(--text-color);">연결 중...</div>
         <button class="header-btn" id="btn-sync" onclick="pushToGoogleSheet()" style="display:none;">📊 시트 업데이트</button>
         <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
         <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 선택 모드</button>
@@ -2122,6 +2123,9 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Firebase 실시간 리스너 (다른 사용자의 변경 즉시 수신) ────
     fbDataRef.on('value', (snapshot) => {
+        document.getElementById('connection-status').innerText = '🟢 실시간 연동 중';
+        document.getElementById('connection-status').style.color = '#4ade80';
+
         const data = snapshot.val();
         if (!data) {
             // Firebase가 비어있으면 → 기존 구글 시트에서 1회 마이그레이션
@@ -2131,10 +2135,24 @@ document.addEventListener('pointerdown', (e) => {
             }
             return;
         }
-        // 데이터가 실제로 바뀌었는지 비교
-        const newCagesStr = JSON.stringify(data.cages || []);
-        const oldCagesStr = JSON.stringify(cages);
-        if (newCagesStr !== oldCagesStr) {
+
+        // 전체 데이터 비교
+        const newDataStr = JSON.stringify({
+            cages: data.cages || [],
+            rackRows: data.rackRows || RACK_ROWS,
+            dayMap: data.dayMap || {},
+            wtRanges: data.wtRanges || {},
+            logs: data.logs || []
+        });
+        const oldDataStr = JSON.stringify({
+            cages: cages,
+            rackRows: RACK_ROWS,
+            dayMap: dayMap,
+            wtRanges: wtRanges,
+            logs: editLog
+        });
+
+        if (newDataStr !== oldDataStr) {
             cages = data.cages || [];
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
@@ -2148,6 +2166,11 @@ document.addEventListener('pointerdown', (e) => {
             console.log('Firebase 실시간 업데이트 수신');
         }
         isDataLoaded = true;
+    }, (error) => {
+        console.error("Firebase 권한 에러:", error);
+        document.getElementById('connection-status').innerText = '🔴 DB 접근 권한 없음 (Rules 확인)';
+        document.getElementById('connection-status').style.color = '#ef4444';
+        alert("Firebase 데이터베이스 접근 권한이 없습니다. Firebase 콘솔에서 Realtime Database의 '규칙(Rules)'을 확인해주세요.\n\n{\n  \"rules\": {\n    \".read\": true,\n    \".write\": true\n  }\n}");
     });
 
     // ── 구글 시트 → Firebase 1회 마이그레이션 ────
@@ -2194,7 +2217,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 10:00:00";
+    const APP_VERSION = "2026-06-01 10:10:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
