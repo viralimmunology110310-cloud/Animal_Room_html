@@ -427,7 +427,7 @@
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
-        <button class="header-btn" id="btn-sync" onclick="pushToGoogleSheet()">📊 시트 업데이트</button>
+        <button class="header-btn" id="btn-sync" onclick="pushToGoogleSheet()" style="display:none;">📊 시트 업데이트</button>
         <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
         <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 선택 모드</button>
         
@@ -2108,10 +2108,20 @@ document.addEventListener('pointerdown', (e) => {
         }).then(() => {
             _fbSaving = false;
             console.log('Firebase 저장 완료');
+            debouncedPushToSheet(); // Firebase 저장 성공 시 구글 시트도 자동 업데이트
         }).catch((err) => {
             _fbSaving = false;
             console.error('Firebase 저장 실패', err);
         });
+    }
+
+    // ── 구글 시트 자동 업데이트 (5초 디바운스, 연속 편집 시 과부하 방지) ────
+    let sheetPushTimeout = null;
+    function debouncedPushToSheet() {
+        if (sheetPushTimeout) clearTimeout(sheetPushTimeout);
+        sheetPushTimeout = setTimeout(() => {
+            pushToGoogleSheet(true); // silent=true
+        }, 5000);
     }
 
     // ── Firebase 실시간 리스너 (다른 사용자의 변경 즉시 수신) ────
@@ -2172,13 +2182,10 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    // ── 구글 시트 포매팅 업데이트 (버튼용) ────
-    async function pushToGoogleSheet() {
-        if (!SCRIPT_URL) { alert('Google Apps Script URL이 설정되지 않았습니다.'); return; }
-        if (!isDataLoaded) { alert('데이터가 아직 로드되지 않았습니다.'); return; }
-        const syncBtn = document.getElementById('btn-sync');
+    // ── 구글 시트 포매팅 업데이트 ────
+    async function pushToGoogleSheet(silent = false) {
+        if (!SCRIPT_URL || !isDataLoaded) return;
         try {
-            syncBtn.innerText = '📊 업데이트 중...';
             const payload = { key: API_KEY, action: 'save', cages, rackRows: RACK_ROWS, strainMap: STRAIN_MAP, logs: editLog, dayMap: dayMap, wtRanges: wtRanges };
             await fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -2186,15 +2193,13 @@ document.addEventListener('pointerdown', (e) => {
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(payload)
             });
-            syncBtn.innerText = '✅ 시트 업데이트 완료';
-            setTimeout(() => { syncBtn.innerText = '📊 시트 업데이트'; }, 2000);
+            if (!silent) console.log('구글 시트 업데이트 완료');
         } catch(e) {
             console.error('시트 업데이트 실패', e);
-            syncBtn.innerText = '⚠️ 업데이트 실패';
         }
     }
 
-    const APP_VERSION = "2026-06-01 09:30:00";
+    const APP_VERSION = "2026-06-01 09:40:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
