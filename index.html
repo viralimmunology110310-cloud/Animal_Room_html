@@ -218,6 +218,14 @@
             filter: brightness(0.4) saturate(1.2); border: 2px solid #FF375F !important;
             transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 55, 95, 0.4);
         }
+        @keyframes highlightBlink {
+            0% { box-shadow: 0 0 0 3px #ff3b30, inset 0 0 10px rgba(255,59,48,0.5); border-color: #ff3b30; }
+            100% { box-shadow: 0 0 0 6px rgba(255,59,48,0), inset 0 0 0 rgba(255,59,48,0); border-color: transparent; }
+        }
+        .cage.highlight-blink {
+            animation: highlightBlink 0.6s infinite alternate;
+            z-index: 1000 !important;
+        }
         .drag-badge {
             position: absolute; top: -10px; right: -10px;
             background: #FF375F; color: white; font-size: 14px; font-weight: bold;
@@ -423,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.2</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.3</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -1776,7 +1784,7 @@ document.addEventListener('pointerdown', (e) => {
             else if (c.m_male_dob) youngerDob = c.m_male_dob;
             else if (c.m_female_dob) youngerDob = c.m_female_dob;
             
-            mHtml += `<tr id="row-mating-${c.id}">
+            mHtml += `<tr id="row-mating-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
                 <td>${globalNoM++}</td>
                 <td>${c.subId || ''}</td>
@@ -1797,7 +1805,7 @@ document.addEventListener('pointerdown', (e) => {
             const codeStr = c.subId ? `${c.code || ''}${c.subId}` : '';
             let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
 
-            bHtml += `<tr id="row-breeding-${c.id}">
+            bHtml += `<tr id="row-breeding-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
                 <td>${globalNoB++}</td>
                 <td>${strainCNoB}</td>
@@ -1812,6 +1820,23 @@ document.addEventListener('pointerdown', (e) => {
         matingTbody.innerHTML = mHtml;
         breedingTbody.innerHTML = bHtml;
     }
+
+    window.hoverSidebarRow = function(cageId) {
+        const c = cages.find(x => x.id === cageId);
+        if (!c) return;
+        if (c.rackId !== currentRack) {
+            currentRack = c.rackId;
+            buildLeftSidebar();
+            renderMainBoard();
+        }
+        const el = document.getElementById(cageId);
+        if (el) el.classList.add('highlight-blink');
+    };
+
+    window.unhoverSidebarRow = function(cageId) {
+        const el = document.getElementById(cageId);
+        if (el) el.classList.remove('highlight-blink');
+    };
 
     function renderMainBoard() {
         const grid = document.getElementById('main-grid');
@@ -1912,6 +1937,9 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Modal ─────────────────────────────────────
     const modal = document.getElementById('modal');
+    modal.addEventListener('mousedown', (e) => {
+        if (e.target === modal) closeModal();
+    });
     let targetSlotIdxForCreate = null;
 
     function setToday(inputId) {
@@ -2357,7 +2385,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.2';
+    const APP_VERSION = 'v2.6.3';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
@@ -2418,6 +2446,12 @@ document.addEventListener('pointerdown', (e) => {
     };
 
     window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('modal').style.display === 'flex') {
+            closeModal();
+            e.preventDefault();
+            return;
+        }
+
         // --- Shortcuts for Select Mode ---
         // Prevent shortcuts if typing in input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -2460,6 +2494,7 @@ document.addEventListener('pointerdown', (e) => {
                         return clone;
                     });
                     
+                    let deletedCount = 0;
                     startTransaction();
                     cages = cages.filter(c => {
                         if (selectedIds.has(c.id)) {
