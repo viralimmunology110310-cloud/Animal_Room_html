@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.0</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.1</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2260,7 +2260,25 @@ document.addEventListener('pointerdown', (e) => {
 
         if (newDataStr !== oldDataStr) {
             let rawCages = data.cages || {};
-            cages = Array.isArray(rawCages) ? rawCages.filter(c => c) : Object.values(rawCages).filter(c => c);
+            let isLegacyArray = Array.isArray(rawCages);
+            
+            let cageMap = new Map();
+            // Object.values extracts both integer keys (legacy) and string keys (delta updates)
+            // String keys come later and will correctly overwrite older integer keys in the Map.
+            Object.values(rawCages).forEach(c => {
+                if (c && typeof c === 'object' && c.id) {
+                    cageMap.set(c.id, c);
+                }
+            });
+            cages = Array.from(cageMap.values());
+            
+            // 만약 Firebase 데이터가 기존 Array 포맷으로 남아있다면, 고유 ID 기반의 Dictionary로 영구 마이그레이션
+            if (isLegacyArray) {
+                setTimeout(() => {
+                    console.log('기존 Firebase Array 데이터를 Dictionary로 강제 마이그레이션 진행...');
+                    saveToFirebase(true);
+                }, 2000);
+            }
 
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
