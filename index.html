@@ -431,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.8</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.9</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2364,6 +2364,11 @@ document.addEventListener('pointerdown', (e) => {
                 refreshLogPanel();
             }
             renderMainBoard(); buildLeftSidebar(); renderSheetPane();
+            // 매칭표 패널이 열려있으면 내용도 즉시 갱신
+            if (document.getElementById('match-panel').classList.contains('open')) {
+                const list = document.getElementById('mapping-list'); list.innerHTML = '';
+                for (const [key, obj] of Object.entries(STRAIN_MAP)) list.appendChild(createStrainRow(key, obj.name, obj.g_done));
+            }
             console.log('Firebase 실시간 업데이트 수신');
         }
         isDataLoaded = true;
@@ -2418,7 +2423,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.8';
+    const APP_VERSION = 'v2.6.9';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
