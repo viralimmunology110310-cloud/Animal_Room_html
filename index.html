@@ -813,49 +813,96 @@
     }
 
     
-    // ── History (Undo / Redo) ──
+    // ── Per-User Action-Based History (Undo / Redo) ──
     let historyStack = [];
     let historyIndex = -1;
+    let currentTxCages = null;
 
-    function saveHistory() {
-        if (historyIndex < historyStack.length - 1) {
-            historyStack = historyStack.slice(0, historyIndex + 1);
-        }
-        historyStack.push({ cages: JSON.parse(JSON.stringify(cages)), logs: JSON.parse(JSON.stringify(editLog)) });
-        historyIndex++;
-        if (historyStack.length > 50) {
-            historyStack.shift();
-            historyIndex--;
-        }
+    function startTransaction() {
+        currentTxCages = JSON.parse(JSON.stringify(cages));
     }
-    
+
+    function commitTransaction() {
+        if (!currentTxCages) return;
+        let oldMap = {}; currentTxCages.forEach(c => oldMap[c.id] = c);
+        let newMap = {}; cages.forEach(c => newMap[c.id] = c);
+        let changes = [];
+        
+        currentTxCages.forEach(oldC => {
+            let newC = newMap[oldC.id];
+            if (!newC) changes.push({ id: oldC.id, oldData: oldC, newData: null });
+            else if (JSON.stringify(oldC) !== JSON.stringify(newC)) {
+                changes.push({ id: oldC.id, oldData: oldC, newData: newC });
+            }
+        });
+        cages.forEach(newC => {
+            if (!oldMap[newC.id]) changes.push({ id: newC.id, oldData: null, newData: newC });
+        });
+
+        if (changes.length > 0) {
+            if (historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
+            historyStack.push({ changes });
+            historyIndex++;
+            if (historyStack.length > 50) { historyStack.shift(); historyIndex--; }
+        }
+        currentTxCages = null;
+    }
+
+    function applyDelta(actionChanges, isUndo) {
+        let changed = false;
+        actionChanges.forEach(change => {
+            const targetData = isUndo ? change.oldData : change.newData;
+            const idx = cages.findIndex(c => c.id === change.id);
+            
+            if (targetData === null) {
+                if (idx !== -1) { cages.splice(idx, 1); changed = true; }
+            } else {
+                let finalSlot = targetData.cellIdx;
+                let finalRack = targetData.rackId;
+                let occupantIdx = cages.findIndex(c => c.rackId === finalRack && c.cellIdx === finalSlot && c.id !== change.id);
+                if (occupantIdx !== -1) {
+                    let rackCages = cages.filter(c => c.rackId === finalRack && c.id !== change.id);
+                    let emptySlots = [];
+                    for(let i=0; i< (RACK_ROWS[finalRack]*10); i++) {
+                        if (!rackCages.some(c=>c.cellIdx===i)) emptySlots.push(i);
+                    }
+                    if (emptySlots.length > 0) {
+                        emptySlots.sort((a,b) => Math.abs(a - finalSlot) - Math.abs(b - finalSlot));
+                        finalSlot = emptySlots[0];
+                    }
+                }
+
+                if (idx !== -1) {
+                    cages[idx] = JSON.parse(JSON.stringify(targetData));
+                    cages[idx].cellIdx = finalSlot;
+                } else {
+                    let newCage = JSON.parse(JSON.stringify(targetData));
+                    newCage.cellIdx = finalSlot;
+                    cages.push(newCage);
+                }
+                changed = true;
+            }
+        });
+        return changed;
+    }
+
     function undo() {
-        if (historyIndex > 0) {
-            if (!confirm("⚠️ [경고] 실행 취소(Ctrl+Z)는 내 작업만 취소하는 것이 아니라, 방 전체를 내 과거 시점으로 되돌립니다 (다른 사람의 최신 작업이 날아갈 수 있습니다).\n\n정말 방 전체 상태를 되돌리시겠습니까?")) return;
+        if (historyIndex >= 0) {
+            const action = historyStack[historyIndex];
+            if (applyDelta(action.changes, true)) {
+                renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+            }
             historyIndex--;
-            const state = historyStack[historyIndex];
-            cages = JSON.parse(JSON.stringify(state.cages));
-            editLog = JSON.parse(JSON.stringify(state.logs));
-            localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
-            refreshLogPanel();
-            renderMainBoard();
-            buildLeftSidebar();
-            debouncedSyncToSheet();
         }
     }
     
     function redo() {
         if (historyIndex < historyStack.length - 1) {
-            if (!confirm("⚠️ [경고] 다시 실행(Ctrl+Y)은 내 과거 시점의 미래로 방 전체를 덮어씌웁니다.\n\n정말 진행하시겠습니까?")) return;
             historyIndex++;
-            const state = historyStack[historyIndex];
-            cages = JSON.parse(JSON.stringify(state.cages));
-            editLog = JSON.parse(JSON.stringify(state.logs));
-            localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
-            refreshLogPanel();
-            renderMainBoard();
-            buildLeftSidebar();
-            debouncedSyncToSheet();
+            const action = historyStack[historyIndex];
+            if (applyDelta(action.changes, false)) {
+                renderMainBoard(); buildLeftSidebar(); debouncedSyncToSheet();
+            }
         }
     }
 
@@ -1069,8 +1116,7 @@
     let selectedIds = new Set();
     let selectedSlotIdxs = new Set();
     let copiedCagesData = [];
-    let historyStack = [];
-    let historyIndex = -1;
+    // historyStack removed here
     let dragData = { active: false, isDragging: false, items: [], primaryId: null, blockOffset: 0, startX: 0, startY: 0 };
     let marquee = { active: false, startX: 0, startY: 0 };
     let currentHoverIdx = -1;
@@ -1401,6 +1447,28 @@ document.addEventListener('pointerdown', (e) => {
                     if (!workCages.some(c => c.cellIdx === i)) emptyLeft.push(i);
                     if (emptyLeft.length >= occupants.length) break;
                 }
+                const delBtn = document.createElement('button');
+        delBtn.innerHTML = '🗑️ 일괄 삭제';
+        delBtn.onclick = () => {
+            if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 정말 삭제하시겠습니까?`)) return;
+            startTransaction();
+            let dc = 0;
+            selectedIds.forEach(cid => {
+                const cIdx = cages.findIndex(c => c.id === cid);
+                if (cIdx !== -1) {
+                    logAction('delete', `Cage ${cid} batch deleted`, `Rack ${cages[cIdx].rackId} — ${cages[cIdx].code}`);
+                    cages.splice(cIdx, 1);
+                    dc++;
+                }
+            });
+            if (dc > 0) {
+                batchMoveMode = false;
+                clearSelection();
+                commitTransaction();
+                renderMainBoard();
+                debouncedSyncToSheet();
+            }
+        };
                 if (emptyLeft.length >= occupants.length) {
                     // 오른쪽에 있는 occupant부터 왼쪽 빈 슬롯으로 배정
                     occupants.sort((a, b) => b.cellIdx - a.cellIdx);
@@ -1452,6 +1520,7 @@ document.addEventListener('pointerdown', (e) => {
             
             let deletedCount = 0;
             const idsToDelete = new Set(dragData.items.map(i => i.id));
+            startTransaction();
             cages = cages.filter(c => {
                 if (idsToDelete.has(c.id)) {
                     logAction('delete', `Cage ${c.id} deleted (drag to trash)`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -1468,7 +1537,7 @@ document.addEventListener('pointerdown', (e) => {
             
             if (deletedCount > 0) {
                 selectedIds.clear(); selectedSlotIdxs.clear();
-                saveHistory();
+                commitTransaction();
                 renderMainBoard();
                 debouncedSyncToSheet();
                 showDeleteFlash(`🔥 ${deletedCount}개 케이지 삭제됨! 🔥`);
@@ -1500,6 +1569,7 @@ document.addEventListener('pointerdown', (e) => {
             item.el.remove();
         });
 
+        startTransaction();
         if (finalIdx !== -1) {
             const result = calculateShiftLogic(finalIdx);
             if (result) {
@@ -1542,7 +1612,7 @@ document.addEventListener('pointerdown', (e) => {
         }
 
         if (batchMoveMode) { batchMoveMode = false; clearSelection(); } else clearSelection();
-        saveHistory(); // Save local history for undo
+        commitTransaction(); // Save local history for undo
         renderMainBoard();
         debouncedSyncToSheet(); // Sync to Firebase!
         document.querySelectorAll('.map-rack').forEach(el => el.classList.remove('drag-over'));
@@ -1923,6 +1993,79 @@ document.addEventListener('pointerdown', (e) => {
 
     function closeModal() { modal.style.display = 'none'; }
 
+    function saveModal() {
+        startTransaction();
+        const currentId = document.getElementById('m-id').value;
+        const cageIdx = cages.findIndex(c => c.id === currentId);
+        if (cageIdx === -1) {
+            // New Cage
+            const nextEmpty = findFirstEmptySlot();
+            if (nextEmpty === -1) { alert("현재 랙에 빈 자리가 없습니다!"); return; }
+            let code = document.getElementById('m-code').value.trim();
+            if (!code) {
+                const selCode = document.getElementById('m-strain').value;
+                code = getNextCageNumber(selCode, currentRack);
+            }
+            const newCage = {
+                id: 'c_' + Date.now(),
+                rackId: currentRack,
+                cellIdx: nextEmpty,
+                code: code,
+                parents: document.getElementById('m-parents').value,
+                birthDate: document.getElementById('m-birthDate').value,
+                males: parseInt(document.getElementById('m-males').value) || 0,
+                females: parseInt(document.getElementById('m-females').value) || 0,
+                isBreeding: document.getElementById('m-isBreeding').checked,
+                memo: document.getElementById('m-memo').value,
+                marked: document.getElementById('m-marked').checked
+            };
+            cages.push(newCage);
+            logAction('create', `Cage ${newCage.id} created`, `Rack ${currentRack} / slot ${nextEmpty} — ${newCage.code}`);
+        } else {
+            const oc = cages[cageIdx];
+            cages[cageIdx] = {
+                ...oc,
+                code: document.getElementById('m-code').value.trim(),
+                parents: document.getElementById('m-parents').value,
+                birthDate: document.getElementById('m-birthDate').value,
+                males: parseInt(document.getElementById('m-males').value) || 0,
+                females: parseInt(document.getElementById('m-females').value) || 0,
+                isBreeding: document.getElementById('m-isBreeding').checked,
+                memo: document.getElementById('m-memo').value,
+                marked: document.getElementById('m-marked').checked
+            };
+            logAction('update', `Cage ${oc.id} updated`, `Rack ${oc.rackId} / slot ${oc.cellIdx} — ${cages[cageIdx].code}`);
+        }
+        closeModal(); renderMainBoard(); buildLeftSidebar(); commitTransaction(); debouncedSyncToSheet();
+    }
+
+    document.getElementById('btn-add').onclick = () => {
+        startTransaction();
+        const selCode = document.getElementById('m-strain').value;
+        const code = getNextCageNumber(selCode, currentRack);
+        document.getElementById('m-id').value = '';
+        document.getElementById('m-code').value = code;
+        document.getElementById('m-parents').value = '';
+        document.getElementById('m-birthDate').value = '';
+        document.getElementById('m-males').value = 0;
+        document.getElementById('m-females').value = 0;
+        document.getElementById('m-isBreeding').checked = false;
+        document.getElementById('m-memo').value = '';
+        document.getElementById('m-marked').checked = false;
+        saveModal();
+    };
+
+    document.getElementById('btn-delete').onclick = () => {
+        startTransaction();
+        const currentId = document.getElementById('m-id').value;
+        const cageIdx = cages.findIndex(c => c.id === currentId);
+        if (cageIdx !== -1) {
+            logAction('delete', `Cage ${currentId} deleted via modal`, `Rack ${currentRack} / slot ${cages[cageIdx].cellIdx} — ${cages[cageIdx].code}`);
+            cages.splice(cageIdx, 1);
+        }
+        closeModal(); renderMainBoard(); buildLeftSidebar(); commitTransaction(); debouncedSyncToSheet();
+    };
+
     function saveCage() {
         if (blockIfOverflow() && document.getElementById('m-id').value) { closeModal(); return; }
         const id = document.getElementById('m-id').value;
@@ -2225,7 +2368,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 10:20:00";
+    const APP_VERSION = "2026-06-01 10:25:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
