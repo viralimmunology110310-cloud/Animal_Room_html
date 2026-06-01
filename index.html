@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Small Animal Room</title>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <style>
         :root {
             --breeding-color: #ffffff;
@@ -421,11 +423,11 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.20</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.0</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
-        <button class="header-btn" id="btn-sync" onclick="manualSync()">🔄 동기화</button>
+        <button class="header-btn" id="btn-sync" onclick="pushToGoogleSheet()">📊 시트 업데이트</button>
         <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
         <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 선택 모드</button>
         
@@ -773,7 +775,7 @@
         }
     });
 
-    const APP_VERSION = "2026-06-01 09:01:00";
+    // APP_VERSION is defined in Firebase section below
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -2062,116 +2064,137 @@ document.addEventListener('pointerdown', (e) => {
         URL.revokeObjectURL(url);
     }
 
-    // ── Google Apps Script Sync ───────────────────
-    // 구글 시트 배포 후 발급받은 Web App URL을 여기에 입력하세요.
+    // ── Firebase Realtime Database ─────────────────
+    const firebaseConfig = {
+        apiKey: "AIzaSyBsUCvObEBp9Vqrnpedh80aAmrMh0fQeFQ",
+        authDomain: "small-animal-room.firebaseapp.com",
+        databaseURL: "https://small-animal-room-default-rtdb.firebaseio.com",
+        projectId: "small-animal-room",
+        storageBucket: "small-animal-room.firebasestorage.app",
+        messagingSenderId: "38554997975",
+        appId: "1:38554997975:web:94d772cd1d0a2452894c92"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const fbDb = firebase.database();
+    const fbDataRef = fbDb.ref('animalRoom');
+
+    // ── Google Apps Script (구글 시트 포매팅 전용) ────
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx61eAKtusJUTl-AvZBuuEV_wetOw0izalnuZhT_tOrRVCKm5sQURaMdEbvj3o_t-U/exec'; 
-    // 임의의 비밀번호(API KEY)를 설정하세요. Apps Script의 API_KEY와 정확히 같아야 합니다.
     const API_KEY = 'my-secret-password-1234';
 
-
-    let syncTimeout = null;
-    let isDirty = false;
-    function debouncedSyncToSheet() {
-        isDirty = true;
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            syncToSheet().finally(() => { isDirty = false; });
-        }, 1000); // 1초 뒤에 즉시 동기화 (수정 후 빠른 반영)
-    }
     let isDataLoaded = false;
+    let _fbSaving = false; // Firebase 저장 중 플래그 (리스너 루프 방지)
 
-    async function syncToSheet() {
-        if (!SCRIPT_URL || !isDataLoaded) return;
+    // ── Firebase에 데이터 저장 (내가 수정할 때마다) ────
+    let saveTimeout = null;
+    function debouncedSyncToSheet() {
+        // 이름은 호환성을 위해 유지하지만, 실제로는 Firebase에 저장
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveToFirebase();
+        }, 500); // 0.5초 후 Firebase에 즉시 저장
+    }
+
+    function saveToFirebase() {
+        if (!isDataLoaded) return;
+        _fbSaving = true;
+        fbDataRef.set({
+            cages: cages,
+            rackRows: RACK_ROWS,
+            dayMap: dayMap,
+            wtRanges: wtRanges,
+            logs: editLog,
+            lastUpdated: Date.now()
+        }).then(() => {
+            _fbSaving = false;
+            console.log('Firebase 저장 완료');
+        }).catch((err) => {
+            _fbSaving = false;
+            console.error('Firebase 저장 실패', err);
+        });
+    }
+
+    // ── Firebase 실시간 리스너 (다른 사용자의 변경 즉시 수신) ────
+    fbDataRef.on('value', (snapshot) => {
+        if (_fbSaving) return; // 내가 방금 저장한 데이터면 무시 (루프 방지)
+        const data = snapshot.val();
+        if (!data) {
+            // Firebase가 비어있으면 → 기존 구글 시트에서 1회 마이그레이션
+            if (!isDataLoaded) {
+                console.log('Firebase 비어있음 → 구글 시트에서 데이터 마이그레이션 시도...');
+                migrateFromGoogleSheet();
+            }
+            return;
+        }
+        // 데이터가 실제로 바뀌었는지 비교
+        const newCagesStr = JSON.stringify(data.cages || []);
+        const oldCagesStr = JSON.stringify(cages);
+        if (newCagesStr !== oldCagesStr) {
+            cages = data.cages || [];
+            if (data.rackRows) RACK_ROWS = data.rackRows;
+            if (data.dayMap) dayMap = data.dayMap;
+            if (data.wtRanges) wtRanges = data.wtRanges;
+            if (data.logs) {
+                editLog = data.logs;
+                localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
+                refreshLogPanel();
+            }
+            renderMainBoard(); buildLeftSidebar();
+            console.log('Firebase 실시간 업데이트 수신');
+        }
+        isDataLoaded = true;
+    });
+
+    // ── 구글 시트 → Firebase 1회 마이그레이션 ────
+    async function migrateFromGoogleSheet() {
+        if (!SCRIPT_URL) { isDataLoaded = true; return; }
+        try {
+            const res = await fetch(SCRIPT_URL + '?action=load&key=' + API_KEY + '&_t=' + Date.now(), {
+                method: 'GET', cache: 'no-store', redirect: 'follow'
+            });
+            const data = await res.json();
+            if (data && data.cages && data.cages.length > 0) {
+                cages = data.cages;
+                if (data.rackRows) RACK_ROWS = data.rackRows;
+                if (data.dayMap) dayMap = data.dayMap;
+                if (data.wtRanges) wtRanges = data.wtRanges;
+                if (data.logs) editLog = data.logs;
+                isDataLoaded = true;
+                saveToFirebase(); // Firebase에 저장하여 이후부터 Firebase가 메인
+                renderMainBoard(); buildLeftSidebar();
+                console.log('구글 시트 → Firebase 마이그레이션 완료!');
+            } else {
+                isDataLoaded = true;
+            }
+        } catch(e) {
+            console.error('마이그레이션 실패', e);
+            isDataLoaded = true;
+        }
+    }
+
+    // ── 구글 시트 포매팅 업데이트 (버튼용) ────
+    async function pushToGoogleSheet() {
+        if (!SCRIPT_URL) { alert('Google Apps Script URL이 설정되지 않았습니다.'); return; }
+        if (!isDataLoaded) { alert('데이터가 아직 로드되지 않았습니다.'); return; }
         const syncBtn = document.getElementById('btn-sync');
         try {
-            syncBtn.innerText = '🔄 동기화 중...';
+            syncBtn.innerText = '📊 업데이트 중...';
             const payload = { key: API_KEY, action: 'save', cages, rackRows: RACK_ROWS, strainMap: STRAIN_MAP, logs: editLog, dayMap: dayMap, wtRanges: wtRanges };
             await fetch(SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors', // CORS 리다이렉트 에러 방지 (불투명 응답 처리)
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(payload)
             });
-            // no-cors 모드에서는 응답을 읽을 수 없으므로 성공으로 간주합니다.
-            syncBtn.innerText = '✅ 동기화 완료';
-            setTimeout(() => { syncBtn.innerText = '🔄 동기화'; }, 2000);
+            syncBtn.innerText = '✅ 시트 업데이트 완료';
+            setTimeout(() => { syncBtn.innerText = '📊 시트 업데이트'; }, 2000);
         } catch(e) {
-            console.error('Sync failed', e);
-            syncBtn.innerText = '⚠️ 동기화 실패';
+            console.error('시트 업데이트 실패', e);
+            syncBtn.innerText = '⚠️ 업데이트 실패';
         }
     }
 
-    async function syncFromSheet(silent = false) {
-        if (!SCRIPT_URL) return;
-        const syncBtn = document.getElementById('btn-sync');
-        try {
-            if (!silent) syncBtn.innerText = '🔄 불러오는 중...';
-            const res = await fetch(SCRIPT_URL + '?action=load&key=' + API_KEY + '&_t=' + Date.now(), {
-                method: 'GET',
-                cache: 'no-store',
-                redirect: 'follow'
-            });
-            const data = await res.json();
-            if (data && data.cages) {
-                const newDataStr = JSON.stringify(data.cages);
-                const oldDataStr = JSON.stringify(cages);
-                if (newDataStr !== oldDataStr) {
-                    cages = data.cages;
-                    if (data.rackRows) RACK_ROWS = data.rackRows;
-                    if (data.dayMap && Object.keys(data.dayMap).length > 0) dayMap = data.dayMap;
-                    if (data.wtRanges && Object.keys(data.wtRanges).length > 0) wtRanges = data.wtRanges;
-                    if (data.logs) {
-                        editLog = data.logs;
-                        localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
-                        refreshLogPanel();
-                    }
-                    renderMainBoard(); buildLeftSidebar();
-                }
-            }
-            isDataLoaded = true;
-            if (!silent) syncBtn.innerText = '🔄 동기화';
-        } catch(e) {
-            console.error('Load failed', e);
-            if (!silent) syncBtn.innerText = '⚠️ 불러오기 실패';
-        }
-    }
-
-    function manualSync() {
-        if (!SCRIPT_URL) { alert('Google Apps Script Web App URL이 설정되지 않았습니다.'); return; }
-        if (!isDataLoaded) {
-            // 첫 로드가 아직 안 됐으면 구글 시트에서 불러오기
-            syncFromSheet();
-        } else {
-            // 첫 로드 이후에는 항상 사이트 → 구글 시트로 밀어넣기(push)
-            syncToSheet().finally(() => { isDirty = false; });
-        }
-    }
-
-    // 실시간 자동 동기화: 10초마다 구글 시트에서 최신 데이터 불러오기(pull)
-    // 단, 내가 수정 중이거나 드래그 중이거나 모달이 열려있으면 잠시 멈춤
-    setInterval(() => {
-        if (!isDataLoaded || !SCRIPT_URL) return;
-        if (isDirty) return; // 내가 수정 중이면 불러오지 않음
-        if (window._splitterDragging) return; // 나눔바 드래그 중
-        if (batchMoveMode) return; // 일괄 이동 중
-        if (document.visibilityState !== 'visible') return; // 탭이 백그라운드면 안함
-        // 모달이 열려있으면 안함
-        const editModal = document.getElementById('edit-modal');
-        const matchPanel = document.getElementById('match-panel');
-        const scheduleModal = document.getElementById('schedule-modal');
-        if ((editModal && editModal.classList.contains('open')) || 
-            (matchPanel && matchPanel.classList.contains('open')) || 
-            (scheduleModal && scheduleModal.classList.contains('open'))) return;
-        syncFromSheet(true);
-    }, 3000); // 3초마다 자동 폴링 (체감상 거의 실시간)
-
-    // 처음 로드 시 구글 시트에서 데이터 불러오기
-    window.addEventListener('load', () => { if (SCRIPT_URL) syncFromSheet(); });
-    // 탭을 닫거나 다른 탭으로 이동할 때, 수정사항이 있으면 저장
-    window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && SCRIPT_URL && isDirty) { syncToSheet(); isDirty = false; } });
-
-    buildLeftSidebar();
-    renderMainBoard();
+    const APP_VERSION = "2026-06-01 09:30:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
