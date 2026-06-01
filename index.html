@@ -421,7 +421,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.19</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v1.20</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -773,7 +773,7 @@
         }
     });
 
-    const APP_VERSION = "2026-06-01 08:58:00";
+    const APP_VERSION = "2026-06-01 09:01:00";
     let RACK_ROWS = { 'A': 5, 'B': 5, 'C': 5, 'D': 3, 'E': 3 };
     let currentRack = 'A';
     let STRAIN_MAP = {
@@ -2076,7 +2076,7 @@ document.addEventListener('pointerdown', (e) => {
         if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
             syncToSheet().finally(() => { isDirty = false; });
-        }, 3000); // 3초 뒤에 동기화
+        }, 1000); // 1초 뒤에 즉시 동기화 (수정 후 빠른 반영)
     }
     let isDataLoaded = false;
 
@@ -2163,7 +2163,7 @@ document.addEventListener('pointerdown', (e) => {
             (matchPanel && matchPanel.classList.contains('open')) || 
             (scheduleModal && scheduleModal.classList.contains('open'))) return;
         syncFromSheet(true);
-    }, 10000);
+    }, 3000); // 3초마다 자동 폴링 (체감상 거의 실시간)
 
     // 처음 로드 시 구글 시트에서 데이터 불러오기
     window.addEventListener('load', () => { if (SCRIPT_URL) syncFromSheet(); });
