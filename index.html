@@ -436,7 +436,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.1</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.5</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2090,7 +2090,7 @@ document.addEventListener('pointerdown', (e) => {
 
     function toggleModalFields() {
         const type = document.getElementById('m-type').value;
-        document.getElementById('breeding-fields').style.display = type === 'breeding' ? 'block' : 'none';
+        document.getElementById('breeding-fields').style.display = (type === 'breeding' || type === 'experiment') ? 'block' : 'none';
         document.getElementById('mating-fields').style.display  = type === 'mating'   ? 'block' : 'none';
         
         const isSentinel = (type === 'sentinel');
@@ -2406,7 +2406,19 @@ document.addEventListener('pointerdown', (e) => {
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
             if (data.strainMap) STRAIN_MAP = sortStrainMap(data.strainMap);
-            if (data.wtRanges) wtRanges = data.wtRanges;
+            if (data.wtRanges) {
+                wtRanges = data.wtRanges;
+                if (Array.isArray(wtRanges)) {
+                    let newObj = { 'Mon': {min:'', max:''}, 'Tue': {min:'', max:''}, 'Wed': {min:'', max:''} };
+                    wtRanges.forEach(w => {
+                        if (w.day && newObj[w.day]) {
+                            newObj[w.day].min = w.start || '';
+                            newObj[w.day].max = w.end || '';
+                        }
+                    });
+                    wtRanges = newObj;
+                }
+            }
             if (data.logs) {
                 editLog = data.logs;
                 localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
@@ -2440,7 +2452,19 @@ document.addEventListener('pointerdown', (e) => {
                 cages = data.cages;
                 if (data.rackRows) RACK_ROWS = data.rackRows;
                 if (data.dayMap) dayMap = data.dayMap;
-                if (data.wtRanges) wtRanges = data.wtRanges;
+                if (data.wtRanges) {
+                    wtRanges = data.wtRanges;
+                    if (Array.isArray(wtRanges)) {
+                        let newObj = { 'Mon': {min:'', max:''}, 'Tue': {min:'', max:''}, 'Wed': {min:'', max:''} };
+                        wtRanges.forEach(w => {
+                            if (w.day && newObj[w.day]) {
+                                newObj[w.day].min = w.start || '';
+                                newObj[w.day].max = w.end || '';
+                            }
+                        });
+                        wtRanges = newObj;
+                    }
+                }
                 if (data.logs) editLog = data.logs;
                 isDataLoaded = true;
                 saveToFirebase(true); // Firebase에 저장하여 이후부터 Firebase가 메인
@@ -2472,7 +2496,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.4';
+    const APP_VERSION = 'v2.7.5';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
