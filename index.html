@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.0</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.1</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2088,16 +2088,14 @@ document.addEventListener('pointerdown', (e) => {
     // ── Firebase에 데이터 저장 (내가 수정할 때마다) ────
     let saveTimeout = null;
     function debouncedSyncToSheet() {
-        // 이름은 호환성을 위해 유지하지만, 실제로는 Firebase에 저장
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
             saveToFirebase();
-        }, 500); // 0.5초 후 Firebase에 즉시 저장
+        }, 10); // 거의 즉시 Firebase에 저장
     }
 
     function saveToFirebase() {
         if (!isDataLoaded) return;
-        _fbSaving = true;
         fbDataRef.set({
             cages: cages,
             rackRows: RACK_ROWS,
@@ -2106,11 +2104,9 @@ document.addEventListener('pointerdown', (e) => {
             logs: editLog,
             lastUpdated: Date.now()
         }).then(() => {
-            _fbSaving = false;
             console.log('Firebase 저장 완료');
             debouncedPushToSheet(); // Firebase 저장 성공 시 구글 시트도 자동 업데이트
         }).catch((err) => {
-            _fbSaving = false;
             console.error('Firebase 저장 실패', err);
         });
     }
@@ -2126,7 +2122,6 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Firebase 실시간 리스너 (다른 사용자의 변경 즉시 수신) ────
     fbDataRef.on('value', (snapshot) => {
-        if (_fbSaving) return; // 내가 방금 저장한 데이터면 무시 (루프 방지)
         const data = snapshot.val();
         if (!data) {
             // Firebase가 비어있으면 → 기존 구글 시트에서 1회 마이그레이션
@@ -2199,7 +2194,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 09:40:00";
+    const APP_VERSION = "2026-06-01 10:00:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
