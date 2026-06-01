@@ -72,51 +72,24 @@ function updateStrainMapSheet(ss, data) {
   let sheet = ss.getSheetByName('Strain Map');
   if (!sheet) {
     sheet = ss.insertSheet('Strain Map');
-    sheet.getRange('A1:C1').setValues([['기호(알파벳)', 'Strain 이름', 'G완료 여부(O/X)']]).setFontWeight('bold').setBackground('#f3f3f3');
-    sheet.setColumnWidth(1, 100);
-    sheet.setColumnWidth(2, 200);
-    sheet.setColumnWidth(3, 120);
-    
-    // DB의 Strain Map 데이터를 최초 1회 뿌리기
-    const keys = sortStrainKeys(Object.keys(data.strainMap));
-    const rows = keys.map(k => {
-      const val = data.strainMap[k];
-      let name = '', g_done = 'X';
-      if (typeof val === 'string') name = val;
-      else { name = val.name || ''; g_done = val.g_done ? 'O' : 'X'; }
-      return [k, name, g_done];
-    });
-    if (rows.length > 0) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
-    return; // 방금 생성했으면 리턴 (덮어쓰기 방지)
   }
-
-  // 이미 시트가 존재하면, 시트의 내용을 읽어서 data.strainMap을 역으로 덮어씀
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) {
-    const smData = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-    const newStrainMap = {};
-    smData.forEach(row => {
-      if (row[0] && row[1]) {
-        const g_done = String(row[2]).trim().toUpperCase() === 'O';
-        newStrainMap[String(row[0]).trim()] = { name: String(row[1]).trim(), g_done };
-      }
-    });
-    if (Object.keys(newStrainMap).length > 0) {
-      data.strainMap = newStrainMap;
-      
-      // 혹시 DB에 있지만 시트에 없는 키 병합 (웹사이트에서 새로 추가한 경우 대비)
-      Object.keys(data.strainMap).forEach(k => {
-         if(!newStrainMap[k]) newStrainMap[k] = data.strainMap[k];
-      });
-      data.strainMap = newStrainMap;
-
-      sheet.clear();
-      sheet.getRange('A1:C1').setValues([['기호(알파벳)', 'Strain 이름', 'G완료 여부(O/X)']]).setFontWeight('bold').setBackground('#f3f3f3');
-      const sortedKeys = sortStrainKeys(Object.keys(newStrainMap));
-      const smRows = sortedKeys.map(k => [k, newStrainMap[k].name, newStrainMap[k].g_done ? 'O' : 'X']);
-      if (smRows.length > 0) sheet.getRange(2, 1, smRows.length, 3).setValues(smRows);
-    }
-  }
+  
+  // 항상 Firebase의 strainMap을 시트에 덮어쓰기 (Firebase가 마스터)
+  sheet.clear();
+  sheet.getRange('A1:C1').setValues([['기호(알파벳)', 'Strain 이름', 'G완료 여부(O/X)']]).setFontWeight('bold').setBackground('#f3f3f3');
+  sheet.setColumnWidth(1, 100);
+  sheet.setColumnWidth(2, 200);
+  sheet.setColumnWidth(3, 120);
+  
+  const keys = sortStrainKeys(Object.keys(data.strainMap));
+  const rows = keys.map(k => {
+    const val = data.strainMap[k];
+    let name = '', g_done = 'X';
+    if (typeof val === 'string') name = val;
+    else { name = val.name || ''; g_done = val.g_done ? 'O' : 'X'; }
+    return [k, name, g_done];
+  });
+  if (rows.length > 0) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
 }
 
 function formatDateDots(dateStr) {
@@ -560,4 +533,29 @@ function clearLogsButton() {
     }
     ui.alert('✅ 로그가 성공적으로 초기화되었습니다!\n웹사이트에서 반드시 [동기화] 버튼을 눌러주셔야 브라우저의 로그도 삭제됩니다.');
   }
+}
+
+
+function formatLogSheet(ss, data) {
+  let logSheet = ss.getSheetByName('Log');
+  if (!logSheet) {
+    logSheet = ss.insertSheet('Log');
+  }
+  logSheet.clear();
+  
+  if (!data.logs || data.logs.length === 0) {
+    logSheet.getRange('A1:D1').setValues([['시간', '분류', '액션', '상세']]);
+    return;
+  }
+  
+  const headers = ['시간', '분류', '액션', '상세'];
+  const rows = [headers];
+  
+  data.logs.forEach(log => {
+    rows.push([log.ts, log.type, log.action, log.detail]);
+  });
+  
+  logSheet.getRange(1, 1, rows.length, 4).setValues(rows);
+  logSheet.getRange(1, 1, 1, 4).setFontWeight('bold').setBackground('#f3f3f3');
+  logSheet.autoResizeColumns(1, 4);
 }
