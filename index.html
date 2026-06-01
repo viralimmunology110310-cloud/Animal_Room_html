@@ -431,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.5</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.6</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2165,6 +2165,8 @@ document.addEventListener('pointerdown', (e) => {
         
         document.getElementById('match-panel').classList.remove('open');
         updateGenotypeDisplay();
+        renderSheetPane();
+        debouncedSyncToSheet();
     }
 
     function syncDeltaToFirebase(changes) {
@@ -2290,6 +2292,7 @@ document.addEventListener('pointerdown', (e) => {
             cages: data.cages || {},
             rackRows: data.rackRows || RACK_ROWS,
             dayMap: data.dayMap || {},
+            strainMap: data.strainMap || {},
             wtRanges: data.wtRanges || {},
             logs: data.logs || []
         });
@@ -2301,6 +2304,7 @@ document.addEventListener('pointerdown', (e) => {
             cages: localCagesObj,
             rackRows: RACK_ROWS,
             dayMap: dayMap,
+            strainMap: STRAIN_MAP,
             wtRanges: wtRanges,
             logs: editLog
         });
@@ -2329,13 +2333,14 @@ document.addEventListener('pointerdown', (e) => {
 
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
+            if (data.strainMap) STRAIN_MAP = data.strainMap;
             if (data.wtRanges) wtRanges = data.wtRanges;
             if (data.logs) {
                 editLog = data.logs;
                 localStorage.setItem(LOG_KEY, JSON.stringify(editLog));
                 refreshLogPanel();
             }
-            renderMainBoard(); buildLeftSidebar();
+            renderMainBoard(); buildLeftSidebar(); renderSheetPane();
             console.log('Firebase 실시간 업데이트 수신');
         }
         isDataLoaded = true;
@@ -2390,7 +2395,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.5';
+    const APP_VERSION = 'v2.6.6';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
