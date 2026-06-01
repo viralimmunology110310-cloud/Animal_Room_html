@@ -670,8 +670,8 @@
                 <div class="form-group" style="flex:1;">
                     <label>성별</label>
                     <select id="b-gender" class="form-control">
-                        <option value="male">수컷 (♂)</option>
-                        <option value="female">암컷 (♀)</option>
+                        <option value="male">m</option>
+                        <option value="female">f</option>
                     </select>
                 </div>
                 <div class="form-group" style="flex:1;">
@@ -1812,7 +1812,20 @@ document.addEventListener('pointerdown', (e) => {
             return (parseInt(a.subId)||0) - (parseInt(b.subId)||0);
         };
         matingCages.sort(sortFn);
-        breedingCages.sort(sortFn);
+
+        const breedingSortFn = (a, b) => {
+            let res = sortFn(a, b);
+            if (res !== 0) return res;
+            
+            let aDob = a.bDob ? new Date(a.bDob).getTime() : Infinity;
+            let bDob = b.bDob ? new Date(b.bDob).getTime() : Infinity;
+            if (aDob !== bDob) return aDob - bDob;
+            
+            let aGen = (a.gender === 'male') ? 0 : (a.gender === 'female' ? 1 : 2);
+            let bGen = (b.gender === 'male') ? 0 : (b.gender === 'female' ? 1 : 2);
+            return aGen - bGen;
+        };
+        breedingCages.sort(breedingSortFn);
 
         matingCages.forEach((c) => {
             const isFirstStrain = (c.code !== currentStrainCodeM);
@@ -2459,7 +2472,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.1';
+    const APP_VERSION = 'v2.7.2';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
