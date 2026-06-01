@@ -423,7 +423,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.5</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.5.2</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -1993,78 +1993,6 @@ document.addEventListener('pointerdown', (e) => {
 
     function closeModal() { modal.style.display = 'none'; }
 
-    function saveModal() {
-        startTransaction();
-        const currentId = document.getElementById('m-id').value;
-        const cageIdx = cages.findIndex(c => c.id === currentId);
-        if (cageIdx === -1) {
-            // New Cage
-            const nextEmpty = findFirstEmptySlot();
-            if (nextEmpty === -1) { alert("현재 랙에 빈 자리가 없습니다!"); return; }
-            let code = document.getElementById('m-code').value.trim();
-            if (!code) {
-                const selCode = document.getElementById('m-strain').value;
-                code = getNextCageNumber(selCode, currentRack);
-            }
-            const newCage = {
-                id: 'c_' + Date.now(),
-                rackId: currentRack,
-                cellIdx: nextEmpty,
-                code: code,
-                parents: document.getElementById('m-parents').value,
-                birthDate: document.getElementById('m-birthDate').value,
-                males: parseInt(document.getElementById('m-males').value) || 0,
-                females: parseInt(document.getElementById('m-females').value) || 0,
-                isBreeding: document.getElementById('m-isBreeding').checked,
-                memo: document.getElementById('m-memo').value,
-                marked: document.getElementById('m-marked').checked
-            };
-            cages.push(newCage);
-            logAction('create', `Cage ${newCage.id} created`, `Rack ${currentRack} / slot ${nextEmpty} — ${newCage.code}`);
-        } else {
-            const oc = cages[cageIdx];
-            cages[cageIdx] = {
-                ...oc,
-                code: document.getElementById('m-code').value.trim(),
-                parents: document.getElementById('m-parents').value,
-                birthDate: document.getElementById('m-birthDate').value,
-                males: parseInt(document.getElementById('m-males').value) || 0,
-                females: parseInt(document.getElementById('m-females').value) || 0,
-                isBreeding: document.getElementById('m-isBreeding').checked,
-                memo: document.getElementById('m-memo').value,
-                marked: document.getElementById('m-marked').checked
-            };
-            logAction('update', `Cage ${oc.id} updated`, `Rack ${oc.rackId} / slot ${oc.cellIdx} — ${cages[cageIdx].code}`);
-        }
-        closeModal(); renderMainBoard(); buildLeftSidebar(); commitTransaction(); debouncedSyncToSheet();
-    }
-
-    document.getElementById('btn-add').onclick = () => {
-        startTransaction();
-        const selCode = document.getElementById('m-strain').value;
-        const code = getNextCageNumber(selCode, currentRack);
-        document.getElementById('m-id').value = '';
-        document.getElementById('m-code').value = code;
-        document.getElementById('m-parents').value = '';
-        document.getElementById('m-birthDate').value = '';
-        document.getElementById('m-males').value = 0;
-        document.getElementById('m-females').value = 0;
-        document.getElementById('m-isBreeding').checked = false;
-        document.getElementById('m-memo').value = '';
-        document.getElementById('m-marked').checked = false;
-        saveModal();
-    };
-
-    document.getElementById('btn-delete').onclick = () => {
-        startTransaction();
-        const currentId = document.getElementById('m-id').value;
-        const cageIdx = cages.findIndex(c => c.id === currentId);
-        if (cageIdx !== -1) {
-            logAction('delete', `Cage ${currentId} deleted via modal`, `Rack ${currentRack} / slot ${cages[cageIdx].cellIdx} — ${cages[cageIdx].code}`);
-            cages.splice(cageIdx, 1);
-        }
-        closeModal(); renderMainBoard(); buildLeftSidebar(); commitTransaction(); debouncedSyncToSheet();
-    };
 
     function saveCage() {
         if (blockIfOverflow() && document.getElementById('m-id').value) { closeModal(); return; }
