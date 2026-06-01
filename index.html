@@ -431,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.7</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.8</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -1130,7 +1130,17 @@
         });
         document.getElementById('day-panel').classList.remove('open');
         renderMainBoard();
-        debouncedSyncToSheet();
+        renderSheetPane();
+        
+        // 즉시 Firebase에 dayMap/wtRanges 직접 전송 (디바운스 없이)
+        fbDataRef.update({
+            dayMap: dayMap,
+            wtRanges: wtRanges,
+            lastUpdated: Date.now()
+        }).then(() => {
+            console.log('요일 배정 Firebase 즉시 동기화 완료');
+            debouncedPushToSheet();
+        }).catch(console.error);
     }
 
     let cages = [];
@@ -2145,6 +2155,15 @@ document.addEventListener('pointerdown', (e) => {
 
     function addStrainRow() { document.getElementById('mapping-list').appendChild(createStrainRow('', '', false)); }
 
+    function sortStrainMap(map) {
+        const sorted = {};
+        Object.keys(map).sort((a, b) => {
+            if (a.length !== b.length) return a.length - b.length;
+            return a.localeCompare(b);
+        }).forEach(k => { sorted[k] = map[k]; });
+        return sorted;
+    }
+
     function saveAndCloseMatchPanel() {
         if (!document.getElementById('match-panel').classList.contains('open')) return;
         const tempMap = {};
@@ -2155,18 +2174,21 @@ document.addEventListener('pointerdown', (e) => {
             if (k) tempMap[k] = { name, g_done };
         });
         
-        const sortedKeys = Object.keys(tempMap).sort((a, b) => {
-            if (a.length !== b.length) return a.length - b.length;
-            return a.localeCompare(b);
-        });
-        
-        STRAIN_MAP = {};
-        sortedKeys.forEach(k => { STRAIN_MAP[k] = tempMap[k]; });
+        STRAIN_MAP = sortStrainMap(tempMap);
         
         document.getElementById('match-panel').classList.remove('open');
         updateGenotypeDisplay();
+        renderMainBoard();
         renderSheetPane();
-        debouncedSyncToSheet();
+        
+        // 즉시 Firebase에 strainMap만 직접 전송 (디바운스 없이)
+        fbDataRef.update({
+            strainMap: STRAIN_MAP,
+            lastUpdated: Date.now()
+        }).then(() => {
+            console.log('Strain 매칭표 Firebase 즉시 동기화 완료');
+            debouncedPushToSheet();
+        }).catch(console.error);
     }
 
     function syncDeltaToFirebase(changes) {
@@ -2334,7 +2356,7 @@ document.addEventListener('pointerdown', (e) => {
 
             if (data.rackRows) RACK_ROWS = data.rackRows;
             if (data.dayMap) dayMap = data.dayMap;
-            if (data.strainMap) STRAIN_MAP = data.strainMap;
+            if (data.strainMap) STRAIN_MAP = sortStrainMap(data.strainMap);
             if (data.wtRanges) wtRanges = data.wtRanges;
             if (data.logs) {
                 editLog = data.logs;
@@ -2396,7 +2418,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.7';
+    const APP_VERSION = 'v2.6.8';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
