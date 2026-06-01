@@ -813,6 +813,10 @@
     }
 
     
+    // ── History (Undo / Redo) ──
+    let historyStack = [];
+    let historyIndex = -1;
+
     function saveHistory() {
         if (historyIndex < historyStack.length - 1) {
             historyStack = historyStack.slice(0, historyIndex + 1);
@@ -827,6 +831,7 @@
     
     function undo() {
         if (historyIndex > 0) {
+            if (!confirm("⚠️ [경고] 실행 취소(Ctrl+Z)는 내 작업만 취소하는 것이 아니라, 방 전체를 내 과거 시점으로 되돌립니다 (다른 사람의 최신 작업이 날아갈 수 있습니다).\n\n정말 방 전체 상태를 되돌리시겠습니까?")) return;
             historyIndex--;
             const state = historyStack[historyIndex];
             cages = JSON.parse(JSON.stringify(state.cages));
@@ -841,6 +846,7 @@
     
     function redo() {
         if (historyIndex < historyStack.length - 1) {
+            if (!confirm("⚠️ [경고] 다시 실행(Ctrl+Y)은 내 과거 시점의 미래로 방 전체를 덮어씌웁니다.\n\n정말 진행하시겠습니까?")) return;
             historyIndex++;
             const state = historyStack[historyIndex];
             cages = JSON.parse(JSON.stringify(state.cages));
@@ -1536,7 +1542,9 @@ document.addEventListener('pointerdown', (e) => {
         }
 
         if (batchMoveMode) { batchMoveMode = false; clearSelection(); } else clearSelection();
+        saveHistory(); // Save local history for undo
         renderMainBoard();
+        debouncedSyncToSheet(); // Sync to Firebase!
         document.querySelectorAll('.map-rack').forEach(el => el.classList.remove('drag-over'));
     }
 
@@ -2217,7 +2225,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 10:15:00";
+    const APP_VERSION = "2026-06-01 10:20:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
