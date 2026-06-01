@@ -431,7 +431,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.6.9</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.0</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -1371,6 +1371,18 @@ document.addEventListener('pointerdown', (e) => {
         dragData.items.push({ id:cageId, el:cageEl, shiftX: e.clientX-rect.left, shiftY: e.clientY-rect.top });
     }
 
+    let autoScrollY = 0;
+    let autoScrollRaf = null;
+    function autoScrollLoop() {
+        if (autoScrollY !== 0) {
+            const boardPane = document.querySelector('.board-pane');
+            if (boardPane) boardPane.scrollTop += autoScrollY;
+            autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+        } else {
+            autoScrollRaf = null;
+        }
+    }
+
     function onPointerMove(e) {
         if (!dragData.active) return;
         if (!dragData.isDragging) {
@@ -1399,6 +1411,18 @@ document.addEventListener('pointerdown', (e) => {
                 item.el.style.top  = (e.clientY - item.shiftY)+'px';
             }
         });
+
+        const boardPane = document.querySelector('.board-pane');
+        if (boardPane) {
+            const boardRect = boardPane.getBoundingClientRect();
+            if (e.clientY < boardRect.top + 60) autoScrollY = -15;
+            else if (e.clientY > boardRect.bottom - 60) autoScrollY = 15;
+            else autoScrollY = 0;
+
+            if (autoScrollY !== 0 && !autoScrollRaf) {
+                autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+            }
+        }
 
         let hoveredRack = null;
         document.querySelectorAll('.map-rack').forEach(rackEl => {
@@ -1548,6 +1572,8 @@ document.addEventListener('pointerdown', (e) => {
         
         const trashZone = document.getElementById('trash-zone');
         if (trashZone) trashZone.style.display = 'none';
+        autoScrollY = 0;
+        if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = null; }
 
         const isOverTrash = e.clientX > window.innerWidth - 160 && e.clientY > window.innerHeight - 160;
         
@@ -2423,7 +2449,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.6.9';
+    const APP_VERSION = 'v2.7.0';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
@@ -2488,6 +2514,17 @@ document.addEventListener('pointerdown', (e) => {
             closeModal();
             e.preventDefault();
             return;
+        }
+        
+        if (e.key === 'Enter' && document.getElementById('modal').style.display === 'flex') {
+            if (e.target.tagName !== 'TEXTAREA') {
+                const saveBtn = document.getElementById('btn-save');
+                if (saveBtn && !saveBtn.disabled) {
+                    saveCage();
+                }
+                e.preventDefault();
+                return;
+            }
         }
 
         // --- Shortcuts for Select Mode ---
