@@ -533,21 +533,21 @@
     </div>
 
     <div class="config-box" style="margin-bottom:20px;">
-        <div style="font-size:13px; font-weight:bold; margin-bottom:10px; color:#ffcc00;">WT (G) 요일 배정 예외 범위</div>
+        <div style="font-size:13px; font-weight:bold; margin-bottom:10px; color:#ffcc00;">케이지 세부 번호(1~20 등) 요일 자동 배정</div>
         <div class="config-row" style="justify-content: flex-start; gap: 10px;">
             <span style="color:#0a84ff;font-weight:bold;min-width:55px; white-space:nowrap;">월요일:</span>
-            G <input type="number" id="wt-mon-min" class="config-input"> ~ 
-            G <input type="number" id="wt-mon-max" class="config-input">
+            <input type="number" id="wt-mon-min" class="config-input" placeholder="시작"> ~ 
+            <input type="number" id="wt-mon-max" class="config-input" placeholder="끝"> 번
         </div>
         <div class="config-row" style="justify-content: flex-start; gap: 10px;">
             <span style="color:#FF375F;font-weight:bold;min-width:55px; white-space:nowrap;">화요일:</span>
-            G <input type="number" id="wt-tue-min" class="config-input"> ~ 
-            G <input type="number" id="wt-tue-max" class="config-input">
+            <input type="number" id="wt-tue-min" class="config-input" placeholder="시작"> ~ 
+            <input type="number" id="wt-tue-max" class="config-input" placeholder="끝"> 번
         </div>
         <div class="config-row" style="justify-content: flex-start; gap: 10px;">
             <span style="color:#34c759;font-weight:bold;min-width:55px; white-space:nowrap;">수요일:</span>
-            G <input type="number" id="wt-wed-min" class="config-input"> ~ 
-            G <input type="number" id="wt-wed-max" class="config-input">
+            <input type="number" id="wt-wed-min" class="config-input" placeholder="시작"> ~ 
+            <input type="number" id="wt-wed-max" class="config-input" placeholder="끝"> 번
         </div>
     </div>
 
@@ -2217,7 +2217,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = "2026-06-01 10:10:00";
+    const APP_VERSION = "2026-06-01 10:15:00";
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
