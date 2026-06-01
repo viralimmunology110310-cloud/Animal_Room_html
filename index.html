@@ -1074,7 +1074,7 @@
 
     // Day Assignment Logic
     function getCageDay(cage) {
-        if (cage.code === 'WT') {
+        if (cage.code === 'G') {
             if (cage.type === 'breeding' || cage.type === 'empty') return 'Mon';
             const sub = parseInt(cage.subId) || 0;
             if (sub >= parseInt(wtRanges['Mon'].min||9999) && sub <= parseInt(wtRanges['Mon'].max||-1)) return 'Mon';
@@ -2297,7 +2297,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyirwmFDrlEYyENvi1MIKZBNkU6ia1DXMdQf0ao5BFMW9VKj1XtnLpK4U_sOlWUPetm/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2sIaTLtxCsaHG43jdbKti2HrUz9794LXQU3KIpEdLvT-No_iCnfl5IhF_5oU84zRw/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2496,7 +2496,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.5';
+    const APP_VERSION = 'v2.7.6';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
