@@ -587,7 +587,27 @@
         <button class="header-btn" style="flex:1; background: rgba(255,55,95,0.2); color:#FF375F; border-color:#FF375F;" onclick="clearLogsSite()">🗑️ 전체 기록 초기화</button>
         <button class="header-btn" style="flex:1; background: rgba(255,255,255,0.1);" onclick="downloadLog()">💾 텍스트 다운로드</button>
         <button class="header-btn" style="flex:1;" onclick="closeLogPanel()">닫기</button>
-    </div></div>
+    </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #444;">
+            <button class="config-btn" style="background:#ff3b30; width:100%;" onclick="openSnapshotModal()">🚨 데이터 긴급 복구 (과거 시점으로 되돌리기)</button>
+        </div>
+    </div>
+</div>
+
+<!-- Snapshot Modal -->
+<div id="snapshot-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width:400px;">
+        <h3 style="margin-top:0; color:#ff3b30;">데이터 긴급 복구</h3>
+        <p style="font-size:12px; color:#ccc;">복구 가능한 과거 시점 목록입니다. 선택 시 현재 데이터가 덮어씌워집니다.</p>
+        <div id="snapshot-list" style="max-height:200px; overflow-y:auto; margin: 10px 0; background:#111; border-radius:5px; padding:10px;">
+            <div style="color:#888; font-size:12px; text-align:center;">목록을 불러오는 중...</div>
+        </div>
+        <div class="modal-btns">
+            <button class="modal-btn cancel-btn" onclick="document.getElementById('snapshot-modal').style.display='none'">닫기</button>
+        </div>
+    </div>
+</div>
+
 
 <!-- Cage modal -->
 <div class="modal-overlay" id="modal">
@@ -2393,7 +2413,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPMS9YjP_lYe7eB4YAQK91NkPwlbg6ITMLnmo5UPLhXoKoDzdXtlrSrxmY_Izvsj0/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwkPCjjlKjAA23yQYZcSBylbbGHBqdLexskyHi1O26usOqa2URGM-ZHna9gZ_ml54o5/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2592,7 +2612,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.8';
+    const APP_VERSION = 'v2.7.9';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
