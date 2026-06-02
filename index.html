@@ -431,7 +431,15 @@
             transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.2s, height 0.2s;
         }
 
-    </style>
+    
+        .hover-border-red td {
+            border-top: 2px solid #FF3B30 !important;
+            border-bottom: 2px solid #FF3B30 !important;
+        }
+        .hover-border-red td:first-child { border-left: 2px solid #FF3B30 !important; }
+        .hover-border-red td:last-child { border-right: 2px solid #FF3B30 !important; }
+
+</style>
 </head>
 <body>
 
@@ -1043,6 +1051,62 @@
                 ${e.detail ? `<div class="log-detail">${e.detail}</div>` : ''}
             </div>
         `).join('');
+    }
+
+    
+    function openSnapshotModal() {
+        closeLogPanel();
+        document.getElementById('snapshot-modal').style.display = 'flex';
+        const listDiv = document.getElementById('snapshot-list');
+        listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">목록을 불러오는 중...</div>';
+        
+        fbDb.ref('snapshots').once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (!data) {
+                listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">저장된 스냅샷이 없습니다.</div>';
+                return;
+            }
+            const keys = Object.keys(data).filter(k => k !== 'lastDate').sort().reverse();
+            if (keys.length === 0) {
+                listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">저장된 스냅샷이 없습니다.</div>';
+                return;
+            }
+            let html = '';
+            keys.forEach(k => {
+                html += `<div style="padding:8px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${k}</span>
+                    <button class="config-btn" style="padding:4px 8px; font-size:11px;" onclick="restoreSnapshot('${k}')">복구</button>
+                </div>`;
+            });
+            listDiv.innerHTML = html;
+        }).catch(err => {
+            listDiv.innerHTML = '<div style="color:#ff3b30; font-size:12px; text-align:center;">오류가 발생했습니다.</div>';
+        });
+    }
+
+    function restoreSnapshot(dateKey) {
+        if (!confirm(`${dateKey} 시점으로 데이터를 복구하시겠습니까?\n현재 데이터는 유실됩니다!`)) return;
+        fbDb.ref('snapshots/' + dateKey).once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                fbDataRef.set(data).then(() => {
+                    alert('복구가 완료되었습니다. 페이지를 새로고침합니다.');
+                    location.reload();
+                });
+            }
+        });
+    }
+
+    function checkAndSaveSnapshot(data) {
+        const todayStr = getMondayStr(new Date()).replace(/-\d{2}$/, '-' + String(new Date().getDate()).padStart(2,'0')); // YYYY-MM-DD
+        fbDb.ref('snapshots/lastDate').once('value').then(snap => {
+            if (snap.val() !== todayStr) {
+                let updates = {};
+                updates['snapshots/lastDate'] = todayStr;
+                updates['snapshots/' + todayStr] = data;
+                fbDb.update(updates).then(() => console.log('Daily snapshot saved:', todayStr));
+            }
+        });
     }
 
     function openLogPanel() {
@@ -1786,7 +1850,30 @@ document.addEventListener('pointerdown', (e) => {
             if (c.noteUpdated && isSameWeek(c.noteUpdated, Date.now())) return '#FF0000';
             return '#0000FF';
         }
-        function getBreedingNoteColor(n) {
+        
+    function getMondayStr(d) {
+        var d2 = new Date(d);
+        var day = d2.getDay(), diff = d2.getDate() - day + (day == 0 ? -6:1);
+        d2.setDate(diff);
+        return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
+    }
+
+    function buildMatingNoteHtml(noteStr) {
+        if (!noteStr) return '';
+        const mondayStr = getMondayStr(new Date());
+        let res = noteStr;
+        const regex = /Baby \d+마리\((\d{1,2})\/(\d{1,2})\)/g;
+        let match;
+        // Use replace correctly
+        return res.replace(regex, (match, mm, dd) => {
+            const dateObj = new Date(new Date().getFullYear(), parseInt(mm)-1, parseInt(dd));
+            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+            const color = (dateStr >= mondayStr) ? '#FF0000' : '#0000FF';
+            return `<span style="color:${color}; font-weight:bold;">${match}</span>`;
+        });
+    }
+
+    function getBreedingNoteColor(n) {
             if (!n) return '#000000';
             if (n.includes('G완')) return '#FF0000';
             if (n.includes('G전')) return '#0000FF';
@@ -1854,7 +1941,7 @@ document.addEventListener('pointerdown', (e) => {
                 <td>${fTxt}</td>
                 <td>${formatDateDots(youngerDob)}</td>
                 <td>${formatDateDots(c.dom)}</td>
-                <td style="color:${getMatingNoteColor(c)}; text-align:left;">${c.notes || ''}</td>
+                <td style="color:#000000; text-align:left;">${buildMatingNoteHtml(c.notes || '')}</td>
             </tr>`;
         });
 
@@ -1894,12 +1981,12 @@ document.addEventListener('pointerdown', (e) => {
             renderMainBoard();
         }
         const el = document.getElementById(cageId);
-        if (el) el.classList.add('highlight-blink');
+        if (el) el.classList.add('hover-border-red');
     };
 
     window.unhoverSidebarRow = function(cageId) {
         const el = document.getElementById(cageId);
-        if (el) el.classList.remove('highlight-blink');
+        if (el) el.classList.remove('hover-border-red');
     };
 
     function renderMainBoard() {
@@ -2297,7 +2384,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2sIaTLtxCsaHG43jdbKti2HrUz9794LXQU3KIpEdLvT-No_iCnfl5IhF_5oU84zRw/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLkCpTPHVb6bGVE7wE564rYT2GS0eu8G7rTE0kqgi-qOCHJ2_vYKuoVdBzShfuxQ7k/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2496,7 +2583,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.6';
+    const APP_VERSION = 'v2.7.7';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
