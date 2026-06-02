@@ -1904,15 +1904,19 @@ document.addEventListener('pointerdown', (e) => {
 
     function buildMatingNoteHtml(noteStr) {
         if (!noteStr) return '';
-        const mondayStr = getMondayStr(new Date());
         let res = noteStr;
         const regex = /Baby\s*\d+\s*마리\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/g;
-        let match;
-        // Use replace correctly
+        
+        const now = new Date();
+        const thresholdDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        
         return res.replace(regex, (match, mm, dd) => {
-            const dateObj = new Date(new Date().getFullYear(), parseInt(mm)-1, parseInt(dd));
-            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
-            const color = (dateStr >= mondayStr) ? '#FF0000' : '#0000FF';
+            let yyyy = now.getFullYear();
+            let matchDate = new Date(yyyy, parseInt(mm)-1, parseInt(dd));
+            if (matchDate > now) {
+                matchDate.setFullYear(yyyy - 1);
+            }
+            const color = (matchDate >= thresholdDate) ? '#FF0000' : '#0000FF';
             return `<span style="color:${color}; font-weight:bold;">${match}</span>`;
         });
     }
@@ -2456,7 +2460,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyimQ8g0Za8TG1EqjxS6igrtCjtg3P8_pdnWS9jHoeCucrtd5hHHgl3fXxVY3WQ2GZf/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSla6OYvvhvafu2nA3tV-7Fb6IJ0eL3BPB-MnN4VX0577HVZ1w9DO2iCBWKzEUi876/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2655,7 +2659,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.11';
+    const APP_VERSION = 'v2.7.12';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
