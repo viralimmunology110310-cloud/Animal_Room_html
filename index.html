@@ -444,7 +444,7 @@
 <body>
 
 <header>
-    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.5</span></h1>
+    <h1 onclick="alert('현재 로드된 브라우저 버전: ' + APP_VERSION)">Small Animal Room Status <span id="title-version-span" style="font-size:14px; color:var(--mating-color); font-weight:bold; margin-left:6px; cursor:pointer;" title="버전 확인">v2.7.13</span></h1>
     <div class="top-right">
         <div class="progress-text">공간 사용률: <span id="occupancy-label">0%</span></div>
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
@@ -2460,7 +2460,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSla6OYvvhvafu2nA3tV-7Fb6IJ0eL3BPB-MnN4VX0577HVZ1w9DO2iCBWKzEUi876/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0VhPwDY8CGuxA4D9unK3bOxTuryx0Wpq5M2MFJRNfMvVphTqdFmS2Vz2el8PvIwKC/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2659,7 +2659,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.12';
+    const APP_VERSION = 'v2.7.13';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
@@ -2903,5 +2903,8 @@ document.addEventListener('pointerdown', (e) => {
             <span style="font-size:36px; margin-bottom:8px;">🗑️</span>삭제
         </div>
     </div>
+<script>
+document.getElementById('title-version-span').innerText = APP_VERSION;
+</script>
 </body>
 </html>
