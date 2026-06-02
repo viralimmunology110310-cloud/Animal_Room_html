@@ -770,23 +770,47 @@
                 e.preventDefault();
             });
             
+            splitter.addEventListener('touchstart', (e) => {
+                const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                if (!isTouch) return;
+                isDragging = true;
+                window._splitterDragging = true;
+                startX = e.touches[0].clientX;
+                startWidth = sheetPane.getBoundingClientRect().width;
+                splitter.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+            }, {passive: true});
+
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
-                const diff = startX - e.clientX; // moving left increases right pane width
+                const diff = startX - e.clientX;
                 let newWidth = startWidth + diff;
-                newWidth = Math.max(250, Math.min(1000, newWidth)); // min 250, max 1000
+                newWidth = Math.max(250, Math.min(1000, newWidth));
                 sheetPane.style.setProperty('--sheet-width', newWidth + 'px');
                 sheetPane.style.width = newWidth + 'px';
             });
             
-            document.addEventListener('mouseup', () => {
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                if (!isTouch) return;
+                const diff = startX - e.touches[0].clientX;
+                let newWidth = startWidth + diff;
+                newWidth = Math.max(250, Math.min(1000, newWidth));
+                sheetPane.style.setProperty('--sheet-width', newWidth + 'px');
+                sheetPane.style.width = newWidth + 'px';
+            }, {passive: true});
+
+            const stopDrag = () => {
                 if (isDragging) {
                     isDragging = false;
                     window._splitterDragging = false;
                     splitter.classList.remove('dragging');
                     document.body.style.cursor = '';
                 }
-            });
+            };
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchend', stopDrag);
         }
 
         const boardPane = document.querySelector('.board-pane');
@@ -1841,7 +1865,7 @@ document.addEventListener('pointerdown', (e) => {
             if (!d) return '';
             const dt = new Date(d);
             if (isNaN(dt)) return d.replace(/-/g, '.');
-            return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+            return `${dt.getFullYear()}.${dt.getMonth()+1}.${dt.getDate()}`;
         }
         function getDayColor(c) {
             let day = getCageDay(c);
@@ -1882,7 +1906,7 @@ document.addEventListener('pointerdown', (e) => {
         if (!noteStr) return '';
         const mondayStr = getMondayStr(new Date());
         let res = noteStr;
-        const regex = /Baby \d+마리\((\d{1,2})\/(\d{1,2})\)/g;
+        const regex = /Baby\s*\d+\s*마리\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/g;
         let match;
         // Use replace correctly
         return res.replace(regex, (match, mm, dd) => {
@@ -1952,7 +1976,7 @@ document.addEventListener('pointerdown', (e) => {
             else if (c.mDob) youngerDob = c.mDob;
             else if (c.fDob) youngerDob = c.fDob;
             
-            mHtml += `<tr id="row-mating-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')">
+            mHtml += `<tr id="row-mating-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')" onclick="toggleTouchRow('${c.id}')">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
                 <td>${globalNoM++}</td>
                 <td>${c.subId || ''}</td>
@@ -1973,7 +1997,7 @@ document.addEventListener('pointerdown', (e) => {
             const codeStr = c.subId ? `${c.code || ''}${c.subId}` : '';
             let sex = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '?');
 
-            bHtml += `<tr id="row-breeding-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')">
+            bHtml += `<tr id="row-breeding-${c.id}" onmouseenter="hoverSidebarRow('${c.id}')" onmouseleave="unhoverSidebarRow('${c.id}')" onclick="toggleTouchRow('${c.id}')">
                 <td class="day-color-cell" style="background:${getDayColor(c)};"></td>
                 <td>${globalNoB++}</td>
                 <td>${strainCNoB}</td>
@@ -1988,6 +2012,25 @@ document.addEventListener('pointerdown', (e) => {
         matingTbody.innerHTML = mHtml;
         breedingTbody.innerHTML = bHtml;
     }
+
+
+    let activeTouchCageId = null;
+    window.toggleTouchRow = function(cageId) {
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (!isTouch) return;
+        
+        if (activeTouchCageId && activeTouchCageId !== cageId) {
+            unhoverSidebarRow(activeTouchCageId);
+        }
+        
+        if (activeTouchCageId === cageId) {
+            unhoverSidebarRow(cageId);
+            activeTouchCageId = null;
+        } else {
+            activeTouchCageId = cageId;
+            hoverSidebarRow(cageId);
+        }
+    };
 
     window.hoverSidebarRow = function(cageId) {
         const toggle = document.getElementById('toggle-highlight');
@@ -2413,7 +2456,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjjzE7n9VkDzLtlJqpXY_5_8p3Jj6j7f5vXOAM3bC9_Yza207EvoZD0fu1M-o1Qk0u/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyimQ8g0Za8TG1EqjxS6igrtCjtg3P8_pdnWS9jHoeCucrtd5hHHgl3fXxVY3WQ2GZf/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2612,7 +2655,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.10';
+    const APP_VERSION = 'v2.7.11';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
