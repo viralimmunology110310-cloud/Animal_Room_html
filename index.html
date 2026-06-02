@@ -470,11 +470,22 @@
             border-radius: 4px !important;
         }
         
-        /* Floating Help Button */
-        .help-fab {
+        /* Floating Help Button Wrapper */
+        .help-fab-wrapper {
             position: fixed;
-            bottom: 25px;
-            right: 25px;
+            bottom: 0;
+            left: 0;
+            width: 120px;
+            height: 120px;
+            z-index: 9999;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-start;
+            padding: 25px;
+            /* To allow touch devices to trigger hover on tap */
+            cursor: default;
+        }
+        .help-fab {
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -484,17 +495,24 @@
             box-shadow: 0 6px 20px rgba(255, 55, 95, 0.4);
             font-size: 26px;
             cursor: pointer;
-            z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none; /* Disables clicking while hidden */
         }
-        .help-fab:hover {
+        .help-fab-wrapper:hover .help-fab, .help-fab-wrapper:active .help-fab {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto; /* Re-enables clicking when visible */
+        }
+        .help-fab-wrapper .help-fab:hover {
             transform: scale(1.1) translateY(-5px);
             box-shadow: 0 10px 25px rgba(255, 55, 95, 0.6);
         }
-        .help-fab:active {
+        .help-fab-wrapper .help-fab:active {
             transform: scale(0.95);
         }
     </style>
@@ -2717,7 +2735,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.16';
+    const APP_VERSION = 'v2.7.17';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
@@ -2965,7 +2983,7 @@ document.addEventListener('pointerdown', (e) => {
 document.getElementById('title-version-span').innerText = APP_VERSION;
 </script>
 
-<button class="help-fab" onclick="startTour()" title="사용법 가이드">💡</button>
+<div class="help-fab-wrapper" ontouchstart=""><button class="help-fab" onclick="startTour()" title="사용법 가이드">💡</button></div>
 
 
 <script>
