@@ -94,7 +94,9 @@ function updateStrainMapSheet(ss, data) {
 
 function formatDateDots(dateStr) {
   if (!dateStr) return '';
-  return dateStr.replace(/-/g, '.');
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
 }
 
 function isSameWeek(ts1, ts2) {
@@ -113,7 +115,20 @@ const STRAIN_COLORS = [
 ];
 
 function getCageDay(cage, dayMap, wtRanges) {
+  if (cage.code === 'G') {
+    if (cage.type === 'breeding' || cage.type === 'empty') return 'Mon';
+    if (wtRanges) {
+      const sub = parseInt(cage.subId) || 0;
+      if (wtRanges['Mon'] && sub >= parseInt(wtRanges['Mon'].min||9999) && sub <= parseInt(wtRanges['Mon'].max||-1)) return 'Mon';
+      if (wtRanges['Tue'] && sub >= parseInt(wtRanges['Tue'].min||9999) && sub <= parseInt(wtRanges['Tue'].max||-1)) return 'Tue';
+      if (wtRanges['Wed'] && sub >= parseInt(wtRanges['Wed'].min||9999) && sub <= parseInt(wtRanges['Wed'].max||-1)) return 'Wed';
+    }
+  }
+
   if (dayMap && dayMap[cage.code]) {
+    if (typeof dayMap[cage.code] === 'string') {
+      return dayMap[cage.code];
+    }
     for (let day in dayMap[cage.code]) {
       const ranges = dayMap[cage.code][day];
       const subNum = parseInt(cage.subId);
@@ -124,31 +139,83 @@ function getCageDay(cage, dayMap, wtRanges) {
       }
     }
   }
-  // wtRanges 확인
-  if (wtRanges && cage.code === 'WT') {
-    const subNum = parseInt(cage.subId);
-    if (!isNaN(subNum)) {
-      for (let w of wtRanges) {
-        if (subNum >= w.start && subNum <= w.end) return w.day;
-      }
-    }
-  }
   return '';
+}
+
+
+function getMondayStr(d) {
+  var d2 = new Date(d);
+  var day = d2.getDay(),
+      diff = d2.getDate() - day + (day == 0 ? -6:1);
+  d2.setDate(diff);
+  return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
+}
+
+function buildMatingNoteRichText(noteStr, mondayStr) {
+  if (!noteStr) return SpreadsheetApp.newRichTextValue().setText('').build();
+  let builder = SpreadsheetApp.newRichTextValue().setText(noteStr);
+  
+  const regex = /Baby \d+마리\((\d{1,2})\/(\d{1,2})\)/g;
+  let match;
+  while ((match = regex.exec(noteStr)) !== null) {
+    const mm = match[1];
+    const dd = match[2];
+    const dateObj = new Date(new Date().getFullYear(), parseInt(mm)-1, parseInt(dd));
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+    let color = '#0000FF'; // Blue
+    if (dateStr >= mondayStr) {
+      color = '#FF0000'; // Red
+    }
+    let textStyle = SpreadsheetApp.newTextStyle().setForegroundColor(color).build();
+    builder.setTextStyle(match.index, match.index + match[0].length, textStyle);
+  }
+  return builder.build();
 }
 
 function formatMatingSheet(ss, data) {
   let sheet = ss.getSheetByName('Mating');
-  if (!sheet) sheet = ss.insertSheet('Mating');
-  sheet.clear();
-  
+  if (!sheet) {
+    sheet = ss.insertSheet('Mating');
+  }
+  sheet.setFrozenRows(2);
+
   const now = new Date();
-  const todayStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const todayStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
+  const mondayStr = getMondayStr(now);
+  const weekMarker = `WEEK:${mondayStr}`;
   
-  sheet.getRange('B1').setValue(todayStr).setFontWeight('bold');
+  sheet.getRange('B1').setValue(todayStr).setFontWeight('bold').setFontSize(12);
   sheet.getRange('C1:J1').merge().setValue('Mating').setHorizontalAlignment('center').setFontWeight('bold').setFontSize(14);
   
-  const headers = ['No.', 'C.no.', 'Strain', 'male', 'female', 'D.O.B', 'D.O.M', 'other'];
-  sheet.getRange(2, 3, 1, headers.length).setValues([headers]).setFontWeight('bold').setHorizontalAlignment('center');
+  const headers = ['No.', 'C.no.', 'Strain', 'male', 'female', 'D.O.B', 'D.O.W', 'other'];
+  sheet.getRange(2, 3, 1, headers.length).setValues([headers]).setFontWeight('bold').setHorizontalAlignment('center').setFontSize(12);
+
+  const lastRow = sheet.getLastRow();
+  let startRow = 3;
+  let isNewWeek = true;
+
+  if (lastRow >= 3) {
+    const markerRange = sheet.getRange(3, 26, lastRow - 2, 1).getValues();
+    for (let i = 0; i < markerRange.length; i++) {
+      if (markerRange[i][0] === weekMarker) {
+        startRow = i + 3;
+        isNewWeek = false;
+        break;
+      }
+    }
+  }
+
+  if (isNewWeek) {
+    startRow = lastRow >= 3 ? lastRow + 1 : 3;
+    if (startRow > 3) {
+      sheet.hideRows(3, startRow - 3);
+    }
+  } else {
+    if (lastRow >= startRow) {
+      sheet.getRange(startRow, 1, lastRow - startRow + 1, 25).clear();
+    }
+  }
+  sheet.getRange(startRow, 26).setValue(weekMarker);
 
   const matingCages = data.cages.filter(c => c.type === 'mating');
   matingCages.sort((a, b) => {
@@ -156,7 +223,16 @@ function formatMatingSheet(ss, data) {
     let bCode = b.code || '';
     if (aCode.length !== bCode.length) return aCode.length - bCode.length;
     if (aCode !== bCode) return aCode.localeCompare(bCode);
-    return (parseInt(a.subId)||0) - (parseInt(b.subId)||0);
+    
+    let aSub = parseInt(a.subId) || 0;
+    let bSub = parseInt(b.subId) || 0;
+    if (aSub !== bSub) return aSub - bSub;
+    
+    let aDob = a.mDob ? new Date(a.mDob).getTime() : Infinity;
+    let bDob = b.mDob ? new Date(b.mDob).getTime() : Infinity;
+    if (aDob !== bDob) return aDob - bDob;
+    
+    return (parseInt(a.mMale)||0) - (parseInt(b.mMale)||0);
   });
 
   const output = [];
@@ -176,7 +252,7 @@ function formatMatingSheet(ss, data) {
       strainCNo = 1;
       colorIdx = (colorIdx + 1) % STRAIN_COLORS.length;
       if (currentBlock) blocks.push(currentBlock);
-      currentBlock = { start: 3 + idx, num: 1, color: STRAIN_COLORS[colorIdx], code: c.code };
+      currentBlock = { start: startRow + idx, num: 1, color: STRAIN_COLORS[colorIdx], code: c.code };
     } else {
       strainCNo++;
       currentBlock.num++;
@@ -194,36 +270,20 @@ function formatMatingSheet(ss, data) {
       }
     }
 
-    let formatGeno = (count, geno) => {
-      if (!count) return '';
-      let g = (geno || '').toLowerCase();
-      if (g.includes('homo') || g.includes('het')) {
-        return `${count}(${geno})`;
-      }
-      return `${count}`;
-    };
-    let mTxt = formatGeno(c.mMale, c.mGeno);
-    let fTxt = formatGeno(c.mFemale, c.fGeno);
-    let mD = c.mDob ? new Date(c.mDob) : new Date(0);
-    let fD = c.fDob ? new Date(c.fDob) : new Date(0);
-    let youngerDob = '';
-    if (c.mDob && c.fDob) youngerDob = (mD > fD) ? c.mDob : c.fDob;
-    else if (c.mDob) youngerDob = c.mDob;
-    else if (c.fDob) youngerDob = c.fDob;
-    let dobTxt = formatDateDots(youngerDob);
-
+    let mNum = c.mMale || '';
+    let fNum = c.mFemale || '';
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
     rowData[1] = globalNo++;
     rowData[2] = c.subId;
     rowData[3] = strainName;
-    rowData[4] = mTxt;
-    rowData[5] = fTxt;
-    rowData[6] = dobTxt;
-    rowData[7] = formatDateDots(c.dom);
+    rowData[4] = mNum;
+    rowData[5] = fNum;
+    rowData[6] = formatDateDots(c.mDob);
+    rowData[7] = formatDateDots(c.mDow);
     rowData[8] = c.notes || '';
     rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
-    rowData[14] = c.id; // P열(16번째)
+    rowData[14] = c.id; 
     output.push(rowData);
 
     let day = getCageDay(c, data.dayMap, data.wtRanges);
@@ -233,22 +293,23 @@ function formatMatingSheet(ss, data) {
     else if (day === 'Wed') dayColor = '#d9d2e9';
     bColors.push([dayColor]);
 
-    let noteColor = '#000000';
+    let color = '#000000';
     if (c.notes) {
-      if (c.noteUpdated && isSameWeek(c.noteUpdated, now.getTime())) {
-        noteColor = '#FF0000';
-      } else {
-        noteColor = '#0000FF';
-      }
+      if (c.notes.includes('G완')) color = '#FF0000';
+      else if (c.notes.includes('G전')) color = '#0000FF';
     }
-    richTexts.push(noteColor);
+    richTexts.push(color);
   });
   if (currentBlock) blocks.push(currentBlock);
 
   if (output.length > 0) {
-    sheet.getRange(3, 2, output.length, 15).setValues(output).setHorizontalAlignment('center');
-    sheet.getRange(3, 10, output.length, 1).setFontColors(richTexts.map(c => [c])).setHorizontalAlignment('left');
-    sheet.getRange(3, 2, output.length, 1).setBackgrounds(bColors);
+    sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
+    
+    let notesRichTexts = output.map(row => [buildMatingNoteRichText(row[8], mondayStr)]);
+    sheet.getRange(startRow, 10, output.length, 1).setRichTextValues(notesRichTexts).setHorizontalAlignment('left');
+    
+    sheet.getRange(startRow, 11, output.length, 1).setFontColors(richTexts.map(c => [c]));
+    sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
     
     blocks.forEach(b => {
       let sm = data.strainMap[b.code];
@@ -261,50 +322,74 @@ function formatMatingSheet(ss, data) {
           isGDone = !!sm.g_done;
         }
       }
-      
-      let mergedText = `${strainName}\n(${b.num})`;
-      sheet.getRange(b.start, 5, 1, 1).setValue(mergedText);
-
       if (isGDone) {
         sheet.getRange(b.start, 2, 1, 1).setValue(`${b.code}(G완)`);
       }
-      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); // Strain 열(E)만 배경색
-      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); // Strain 열(E) 병합
       
-      sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); // B열 굵게
+      let mergedText = `${strainName}
+(${b.num})`;
+      sheet.getRange(b.start, 5, 1, 1).setValue(mergedText);
       
-      // 테두리: 외곽선 전체 + 내부 세로선만 (가로선 제외). B열(2) 제외하고 C열(3)부터 8칸(C~J)만 적용
+      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); 
+      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); 
+      sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); 
       sheet.getRange(b.start, 3, b.num, 8).setBorder(true, true, true, true, true, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
     });
     
-    // No. 열(C열)은 통째로 내부 가로선 제거 (strain 간의 테두리도 없앰)
-    sheet.getRange(3, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  // Set column widths for Mating sheet (B to J)
-  const matingWidths = [87, 59, 47, 185, 89, 82, 97, 87, 410];
+  const matingWidths = [100, 76, 47, 122, 34, 44, 87, 87, 168, 82];
   matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
-  // Set borders for rows 1 and 2 (C to J)
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  
-  sheet.hideColumns(16); sheet.hideColumns(11); // P열, K열 숨기기
-  // sheet.autoResizeColumns(2, 10); // 고정 너비 사용으로 인해 비활성화
+  sheet.hideColumns(16); sheet.hideColumns(11); 
 }
 
 function formatBreedingSheet(ss, data) {
   let sheet = ss.getSheetByName('Breeding');
-  if (!sheet) sheet = ss.insertSheet('Breeding');
-  sheet.clear();
+  if (!sheet) {
+    sheet = ss.insertSheet('Breeding');
+  }
+  sheet.setFrozenRows(2);
 
   const now = new Date();
-  const todayStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const todayStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
+  const mondayStr = getMondayStr(now);
+  const weekMarker = `WEEK:${mondayStr}`;
   
-  sheet.getRange('B1').setValue(todayStr).setFontWeight('bold');
+  sheet.getRange('B1').setValue(todayStr).setFontWeight('bold').setFontSize(12);
   sheet.getRange('C1:I1').merge().setValue('Breeding').setHorizontalAlignment('center').setFontWeight('bold').setFontSize(14);
   
   const headers = ['No.', 'C.no.', 'Strain', 'sex', 'head', 'D.O.B', 'other'];
-  sheet.getRange(2, 3, 1, headers.length).setValues([headers]).setFontWeight('bold').setHorizontalAlignment('center');
+  sheet.getRange(2, 3, 1, headers.length).setValues([headers]).setFontWeight('bold').setHorizontalAlignment('center').setFontSize(12);
+
+  const lastRow = sheet.getLastRow();
+  let startRow = 3;
+  let isNewWeek = true;
+
+  if (lastRow >= 3) {
+    const markerRange = sheet.getRange(3, 26, lastRow - 2, 1).getValues();
+    for (let i = 0; i < markerRange.length; i++) {
+      if (markerRange[i][0] === weekMarker) {
+        startRow = i + 3;
+        isNewWeek = false;
+        break;
+      }
+    }
+  }
+
+  if (isNewWeek) {
+    startRow = lastRow >= 3 ? lastRow + 1 : 3;
+    if (startRow > 3) {
+      sheet.hideRows(3, startRow - 3);
+    }
+  } else {
+    if (lastRow >= startRow) {
+      sheet.getRange(startRow, 1, lastRow - startRow + 1, 25).clear();
+    }
+  }
+  sheet.getRange(startRow, 26).setValue(weekMarker);
 
   const breedingCages = data.cages.filter(c => c.type === 'breeding' || c.type === 'empty');
   breedingCages.sort((a, b) => {
@@ -312,7 +397,18 @@ function formatBreedingSheet(ss, data) {
     let bCode = b.code || '';
     if (aCode.length !== bCode.length) return aCode.length - bCode.length;
     if (aCode !== bCode) return aCode.localeCompare(bCode);
-    return (parseInt(a.subId)||0) - (parseInt(b.subId)||0);
+    
+    let aSub = parseInt(a.subId) || 0;
+    let bSub = parseInt(b.subId) || 0;
+    if (aSub !== bSub) return aSub - bSub;
+    
+    let aDob = a.bDob ? new Date(a.bDob).getTime() : Infinity;
+    let bDob = b.bDob ? new Date(b.bDob).getTime() : Infinity;
+    if (aDob !== bDob) return aDob - bDob;
+    
+    let aGen = (a.gender === 'male') ? 0 : (a.gender === 'female' ? 1 : 2);
+    let bGen = (b.gender === 'male') ? 0 : (b.gender === 'female' ? 1 : 2);
+    return aGen - bGen;
   });
 
   const output = [];
@@ -333,7 +429,7 @@ function formatBreedingSheet(ss, data) {
       colorIdx = (colorIdx + 1) % STRAIN_COLORS.length;
       if (currentBlock) blocks.push(currentBlock);
       currentBlock = { 
-        start: 3 + idx, num: 1, color: STRAIN_COLORS[colorIdx], code: c.code,
+        start: startRow + idx, num: 1, color: STRAIN_COLORS[colorIdx], code: c.code,
         totalHeads: parseInt(c.bCount) || 0,
         g_pre: 0, g_done_heads: 0
       };
@@ -363,14 +459,14 @@ function formatBreedingSheet(ss, data) {
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
     rowData[1] = globalNo++;
-    rowData[2] = strainCNo;
+    rowData[2] = c.subId;
     rowData[3] = strainName;
     rowData[4] = sex;
     rowData[5] = c.bCount;
     rowData[6] = formatDateDots(c.bDob);
     rowData[7] = c.notes || '';
     rowData[8] = isGDone ? '' : `${c.code}${c.subId}`;
-    rowData[14] = c.id; // P열(16)
+    rowData[14] = c.id; 
     output.push(rowData);
 
     let day = getCageDay(c, data.dayMap, data.wtRanges);
@@ -390,11 +486,10 @@ function formatBreedingSheet(ss, data) {
   if (currentBlock) blocks.push(currentBlock);
 
   if (output.length > 0) {
-    sheet.getRange(3, 2, output.length, 15).setValues(output).setHorizontalAlignment('center');
-    sheet.getRange(3, 9, output.length, 1).setFontColors(richTexts.map(c => [c]));
-    sheet.getRange(3, 10, output.length, 1).setHorizontalAlignment('left');
-    sheet.getRange(3, 2, output.length, 1).setBackgrounds(bColors);
-    
+    sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
+    sheet.getRange(startRow, 9, output.length, 1).setFontColors(richTexts.map(c => [c]));
+    sheet.getRange(startRow, 10, output.length, 1).setHorizontalAlignment('left');
+    sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
 
     blocks.forEach(b => {
       let sm = data.strainMap[b.code];
@@ -410,37 +505,30 @@ function formatBreedingSheet(ss, data) {
       
       let mergedText = '';
       if (isGDone) {
-        mergedText = `${strainName}\n(${b.totalHeads})`;
+        mergedText = `${strainName}
+(${b.totalHeads})`;
         sheet.getRange(b.start, 2, 1, 1).setValue(`${b.code}(G완)`);
       } else {
-        mergedText = `${strainName}\n(G전: ${b.g_pre} / G완: ${b.g_done_heads})`;
+        mergedText = `${strainName}
+(G완: ${b.g_done_heads} / G전: ${b.g_pre})`;
       }
       
       sheet.getRange(b.start, 5, 1, 1).setValue(mergedText);
-      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); // Strain 열(E)만 배경색
-      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); // Strain 열(E) 병합
+      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); 
+      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); 
       
-      sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); // B열 굵게
-
-      
-      // 테두리: 외곽선 전체 + 내부 세로선만 (가로선 제외). B열(2) 제외하고 C열(3)부터 7칸(C~I)만 적용
+      sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); 
       sheet.getRange(b.start, 3, b.num, 7).setBorder(true, true, true, true, true, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
     });
     
-    // No. 열(C열)은 통째로 내부 가로선 제거 (strain 간의 테두리도 없앰)
-    sheet.getRange(3, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  // Set column widths for Breeding sheet (B to J)
   const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168, 82];
   breedingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
-  // Set borders for rows 1 and 2 (C to I)
   sheet.getRange(1, 3, 2, 7).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-    
-    // P열 숨기기
-    sheet.hideColumns(16);
-    // sheet.autoResizeColumns(2, 9); // 고정 너비 사용으로 인해 비활성화
+  sheet.hideColumns(16);
 }
 
 // ── 구글 시트 전용 메뉴 추가 ──

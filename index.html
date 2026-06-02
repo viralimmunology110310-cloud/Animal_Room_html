@@ -60,7 +60,7 @@
 
         .room-map {
             position: relative; width: 100%; height: 360px;
-            margin-top: auto; margin-bottom: 0;
+            margin-top: 15px; margin-bottom: 0;
             background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border);
             border-radius: 24px; box-sizing: border-box; overflow: hidden;
         }
@@ -450,7 +450,7 @@
         <div class="progress-container"><div class="progress-bar" id="occupancy-bar"></div></div>
         <div id="connection-status" style="display:inline-block; font-size:12px; margin-right:10px; font-weight:bold; padding: 4px 8px; border-radius:4px; background:var(--header-bg); color:var(--text-color);">연결 중...</div>
         <button class="header-btn" id="btn-sync" onclick="pushToGoogleSheet()" style="display:none;">📊 시트 업데이트</button>
-        <button class="header-btn" onclick="openLogPanel()">📋 로그</button>
+        <button class="header-btn btn-log-view" onclick="openLogPanel()">📄 로그 / 복구</button>
         <button class="header-btn" id="btn-batch" onclick="toggleBatchMode()">☑️ 선택 모드</button>
         
         <button class="header-btn" onclick="openDayPanel()">📅 요일 배정</button>
@@ -1981,12 +1981,21 @@ document.addEventListener('pointerdown', (e) => {
             renderMainBoard();
         }
         const el = document.getElementById(cageId);
-        if (el) el.classList.add('hover-border-red');
+        if (el) el.classList.add('highlight-blink');
+        
+        const rowM = document.getElementById(`row-mating-${cageId}`);
+        if (rowM) rowM.classList.add('hover-border-red');
+        const rowB = document.getElementById(`row-breeding-${cageId}`);
+        if (rowB) rowB.classList.add('hover-border-red');
     };
 
     window.unhoverSidebarRow = function(cageId) {
         const el = document.getElementById(cageId);
-        if (el) el.classList.remove('hover-border-red');
+        if (el) el.classList.remove('highlight-blink');
+        const rowM = document.getElementById(`row-mating-${cageId}`);
+        if (rowM) rowM.classList.remove('hover-border-red');
+        const rowB = document.getElementById(`row-breeding-${cageId}`);
+        if (rowB) rowB.classList.remove('hover-border-red');
     };
 
     function renderMainBoard() {
@@ -2583,7 +2592,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v2.7.7';
+    const APP_VERSION = 'v2.7.8';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
