@@ -151,21 +151,27 @@ function getMondayStr(d) {
   return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
 }
 
-function buildMatingNoteRichText(noteStr, mondayStr) {
+function buildMatingNoteRichText(noteStr) {
   if (!noteStr) return SpreadsheetApp.newRichTextValue().setText('').build();
   let builder = SpreadsheetApp.newRichTextValue().setText(noteStr);
+  let blackStyle = SpreadsheetApp.newTextStyle().setForegroundColor('#000000').build();
+  builder.setTextStyle(0, noteStr.length, blackStyle);
   
-  const regex = /Baby \d+마리\((\d{1,2})\/(\d{1,2})\)/g;
+  const now = new Date();
+  const thresholdDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  
+  const regex = /Baby\s*\d+\s*마리\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/g;
   let match;
   while ((match = regex.exec(noteStr)) !== null) {
     const mm = match[1];
     const dd = match[2];
-    const dateObj = new Date(new Date().getFullYear(), parseInt(mm)-1, parseInt(dd));
-    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
-    let color = '#0000FF'; // Blue
-    if (dateStr >= mondayStr) {
-      color = '#FF0000'; // Red
+    let yyyy = now.getFullYear();
+    let matchDate = new Date(yyyy, parseInt(mm)-1, parseInt(dd));
+    if (matchDate > now) {
+      matchDate.setFullYear(yyyy - 1);
     }
+    
+    let color = (matchDate >= thresholdDate) ? '#FF0000' : '#0000FF';
     let textStyle = SpreadsheetApp.newTextStyle().setForegroundColor(color).build();
     builder.setTextStyle(match.index, match.index + match[0].length, textStyle);
   }
@@ -187,7 +193,7 @@ function formatMatingSheet(ss, data) {
   sheet.getRange('B1').setValue(todayStr).setFontWeight('bold').setFontSize(12);
   sheet.getRange('C1:J1').merge().setValue('Mating').setHorizontalAlignment('center').setFontWeight('bold').setFontSize(14);
   
-  const headers = ['No.', 'C.no.', 'Strain', 'male', 'female', 'D.O.B', 'D.O.W', 'other'];
+  const headers = ['No.', 'C.no.', 'Strain', 'male', 'female', 'D.O.B', 'D.O.M', 'other'];
   sheet.getRange(2, 3, 1, headers.length).setValues([headers]).setFontWeight('bold').setHorizontalAlignment('center').setFontSize(12);
 
   const lastRow = sheet.getLastRow();
@@ -208,6 +214,17 @@ function formatMatingSheet(ss, data) {
   if (isNewWeek) {
     startRow = lastRow >= 3 ? lastRow + 1 : 3;
     if (startRow > 3) {
+      let markerRange = sheet.getRange(3, 26, lastRow - 2, 1).getValues();
+      let prevMarker = markerRange[markerRange.length - 1][0];
+      let firstRowOfHiddenBlock = lastRow;
+      for (let i = markerRange.length - 1; i >= 0; i--) {
+        if (markerRange[i][0] === prevMarker) {
+          firstRowOfHiddenBlock = i + 3;
+        } else {
+          break;
+        }
+      }
+      sheet.getRange(firstRowOfHiddenBlock, 1).setValue(`[${todayStr} 숨김]`).setFontSize(10).setFontWeight('bold').setFontColor('#FF375F');
       sheet.hideRows(3, startRow - 3);
     }
   } else {
@@ -305,7 +322,7 @@ function formatMatingSheet(ss, data) {
   if (output.length > 0) {
     sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
     
-    let notesRichTexts = output.map(row => [buildMatingNoteRichText(row[8], mondayStr)]);
+    let notesRichTexts = output.map(row => [buildMatingNoteRichText(row[8])]);
     sheet.getRange(startRow, 10, output.length, 1).setRichTextValues(notesRichTexts).setHorizontalAlignment('left');
     
     sheet.getRange(startRow, 11, output.length, 1).setFontColors(richTexts.map(c => [c]));
@@ -330,8 +347,8 @@ function formatMatingSheet(ss, data) {
 (${b.num})`;
       sheet.getRange(b.start, 5, 1, 1).setValue(mergedText);
       
-      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); 
-      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); 
+      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color).setWrap(true).setVerticalAlignment('middle'); 
+      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge(); 
       sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); 
       sheet.getRange(b.start, 3, b.num, 8).setBorder(true, true, true, true, true, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
     });
@@ -382,6 +399,17 @@ function formatBreedingSheet(ss, data) {
   if (isNewWeek) {
     startRow = lastRow >= 3 ? lastRow + 1 : 3;
     if (startRow > 3) {
+      let markerRange = sheet.getRange(3, 26, lastRow - 2, 1).getValues();
+      let prevMarker = markerRange[markerRange.length - 1][0];
+      let firstRowOfHiddenBlock = lastRow;
+      for (let i = markerRange.length - 1; i >= 0; i--) {
+        if (markerRange[i][0] === prevMarker) {
+          firstRowOfHiddenBlock = i + 3;
+        } else {
+          break;
+        }
+      }
+      sheet.getRange(firstRowOfHiddenBlock, 1).setValue(`[${todayStr} 숨김]`).setFontSize(10).setFontWeight('bold').setFontColor('#FF375F');
       sheet.hideRows(3, startRow - 3);
     }
   } else {
@@ -459,7 +487,7 @@ function formatBreedingSheet(ss, data) {
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
     rowData[1] = globalNo++;
-    rowData[2] = c.subId;
+    rowData[2] = strainCNo;
     rowData[3] = strainName;
     rowData[4] = sex;
     rowData[5] = c.bCount;
@@ -514,8 +542,8 @@ function formatBreedingSheet(ss, data) {
       }
       
       sheet.getRange(b.start, 5, 1, 1).setValue(mergedText);
-      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color); 
-      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge().setVerticalAlignment('middle'); 
+      sheet.getRange(b.start, 5, b.num, 1).setBackground(b.color).setWrap(true).setVerticalAlignment('middle'); 
+      if (b.num > 1) sheet.getRange(b.start, 5, b.num, 1).merge(); 
       
       sheet.getRange(b.start, 2, b.num, 1).setFontWeight('bold'); 
       sheet.getRange(b.start, 3, b.num, 7).setBorder(true, true, true, true, true, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
