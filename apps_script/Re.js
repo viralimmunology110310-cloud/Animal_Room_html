@@ -343,7 +343,7 @@ function formatMatingSheet(ss, data, reservationMap) {
     if (!resv && c.mFemale && !sanDobF) {
        resv = reservationMap[codeUp + '_f_' + c.mFemale + '_'];
     }
-    if (resv) note = (note ? note + ', ' : '') + '[예약: ' + resv + ']';
+    if (resv) note = (note ? note + ', ' : '') + resv;
     rowData[8] = note;
     rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
     rowData[14] = c.id; 
@@ -553,7 +553,7 @@ function formatBreedingSheet(ss, data, reservationMap) {
     if (!resv && !sanDob) {
        resv = reservationMap[codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_'];
     }
-    if (resv) note = (note ? note + ', ' : '') + '[예약: ' + resv + ']';
+    if (resv) note = (note ? note + ', ' : '') + resv;
     rowData[7] = note;
     rowData[8] = isGDone ? '' : `${c.code}${c.subId}`;
     rowData[14] = c.id; 
@@ -761,7 +761,7 @@ function getReservationMap() {
       let cageNo = String(row[1] || '').trim();
       
       let vals = [];
-      for (let c = 6; c <= 10; c++) {
+      for (let c = 7; c <= 10; c++) {
         let v = String(row[c] || '').trim();
         if (v) vals.push(v);
       }
