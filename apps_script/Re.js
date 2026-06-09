@@ -178,7 +178,8 @@ function buildMatingNoteRichText(noteStr) {
   return builder.build();
 }
 
-function formatMatingSheet(ss, data) {
+function formatMatingSheet(ss, data, reservationMap) {
+  reservationMap = reservationMap || {};
   let sheet = ss.getSheetByName('Mating');
   if (!sheet) {
     sheet = ss.insertSheet('Mating');
@@ -298,7 +299,10 @@ function formatMatingSheet(ss, data) {
     rowData[5] = fNum;
     rowData[6] = formatDateDots(c.mDob);
     rowData[7] = formatDateDots(c.mDow);
-    rowData[8] = c.notes || '';
+    let note = c.notes || '';
+    const resv = reservationMap[c.code + '_' + c.subId];
+    if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
+    rowData[8] = note;
     rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
     rowData[14] = c.id; 
     output.push(rowData);
@@ -356,14 +360,14 @@ function formatMatingSheet(ss, data) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const matingWidths = [100, 76, 47, 122, 34, 44, 87, 87, 168, 82];
-  matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
+  sheet.autoResizeColumns(2, 9);
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
-  sheet.hideColumns(16); sheet.hideColumns(11); 
+  sheet.hideColumns(16);
 }
 
-function formatBreedingSheet(ss, data) {
+function formatBreedingSheet(ss, data, reservationMap) {
+  reservationMap = reservationMap || {};
   let sheet = ss.getSheetByName('Breeding');
   if (!sheet) {
     sheet = ss.insertSheet('Breeding');
@@ -492,7 +496,10 @@ function formatBreedingSheet(ss, data) {
     rowData[4] = sex;
     rowData[5] = c.bCount;
     rowData[6] = formatDateDots(c.bDob);
-    rowData[7] = c.notes || '';
+    let note = c.notes || '';
+    const resv = reservationMap[c.code + '_' + c.subId];
+    if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
+    rowData[7] = note;
     rowData[8] = isGDone ? '' : `${c.code}${c.subId}`;
     rowData[14] = c.id; 
     output.push(rowData);
@@ -552,8 +559,7 @@ function formatBreedingSheet(ss, data) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168, 82];
-  breedingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
+  sheet.autoResizeColumns(2, 8);
 
   sheet.getRange(1, 3, 2, 7).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
@@ -565,7 +571,6 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🐭 Animal Room')
       .addItem('🔄 시트 새로고침 (매칭표 적용)', 'syncFromSheetButton')
-      .addItem('🗑️ 로그 초기화', 'clearLogsButton')
       .addToUi();
 }
 
@@ -578,7 +583,12 @@ function syncFromSheetButton() {
     return;
   }
   
-  const rawData = dbSheet.getRange('A1').getValue();
+  const lastRow = dbSheet.getLastRow();
+  let rawData = '';
+  if (lastRow > 0) {
+    const vals = dbSheet.getRange(1, 1, lastRow, 1).getValues();
+    rawData = vals.map(r => r[0]).join('');
+  }
   if (!rawData) {
     SpreadsheetApp.getUi().alert('DB 데이터가 비어있습니다.');
     return;
@@ -617,9 +627,10 @@ function syncFromSheetButton() {
   }
 
 
-  // 시트 다시 그리기
-  formatMatingSheet(ss, data);
-  formatBreedingSheet(ss, data);
+  // 예약 시트 연동 및 시트 다시 그리기
+  const reservationMap = getReservationMap();
+  formatMatingSheet(ss, data, reservationMap);
+  formatBreedingSheet(ss, data, reservationMap);
   
   SpreadsheetApp.getUi().alert('✅ 시트 새로고침이 완료되었습니다!');
 }
@@ -674,4 +685,38 @@ function formatLogSheet(ss, data) {
   logSheet.getRange(1, 1, rows.length, 4).setValues(rows);
   logSheet.getRange(1, 1, 1, 4).setFontWeight('bold').setBackground('#f3f3f3');
   logSheet.autoResizeColumns(1, 4);
+}
+
+
+// ── 예약 시트 데이터 가져오기 ──
+function getReservationMap() {
+  const map = {};
+  try {
+    const resSS = SpreadsheetApp.openById('1AAPiUrITICfZQQHhUtAHAhqg0a5GTabuPeqbJyL04mU');
+    const resSheet = resSS.getSheetByName('mouse reservation');
+    if (!resSheet) return map;
+    
+    // 데이터 범위: A열(Strain) ~ H열(Reservation)
+    const data = resSheet.getRange('A2:H' + Math.max(2, resSheet.getLastRow())).getValues();
+    
+    let currentStrain = '';
+    data.forEach(row => {
+      let rawStrain = String(row[0] || '').trim();
+      let cageNo = String(row[1] || '').trim();
+      let resv = String(row[7] || '').trim();
+      
+      // 스트레인 기호 추출 로직 (A, C, D 등)
+      if (rawStrain) {
+         currentStrain = rawStrain;
+      }
+      
+      if (currentStrain && cageNo && resv) {
+         const key = currentStrain.toUpperCase() + '_' + cageNo;
+         map[key] = resv;
+      }
+    });
+  } catch(e) {
+    console.error('Reservation fetch error: ' + e);
+  }
+  return map;
 }

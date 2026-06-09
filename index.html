@@ -439,6 +439,24 @@
         .hover-border-red td:first-child { border-left: 2px solid #FF3B30 !important; }
         .hover-border-red td:last-child { border-right: 2px solid #FF3B30 !important; }
 
+        /* ─── Chip Toggle (G완/G전, 임신) ─── */
+        .chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+        .chip-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); cursor: pointer; font-size: 12px; font-weight: 600; color: #a1a1a6; transition: all 0.2s; user-select: none; }
+        .chip-toggle:hover { background: rgba(255,255,255,0.1); }
+        .chip-toggle input[type="checkbox"], .chip-toggle input[type="radio"] { display: none; }
+        .chip-toggle.active { background: rgba(52,199,89,0.15); border-color: rgba(52,199,89,0.5); color: #34c759; }
+        .chip-toggle.active-red { background: rgba(255,55,95,0.15); border-color: rgba(255,55,95,0.5); color: #FF375F; }
+        .chip-toggle.active-blue { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.5); color: #0a84ff; }
+        .chip-toggle.active-pregnant { background: rgba(255,159,10,0.15); border-color: rgba(255,159,10,0.5); color: #ff9f0a; }
+        .chip-sub-row { display: none; margin-left: 4px; }
+        .chip-sub-row.visible { display: flex; gap: 6px; }
+        .chip-toggle.sub { font-size: 11px; padding: 3px 10px; }
+        .pregnant-indicator { position: absolute; bottom: 2px; right: 4px; font-size: 11px; opacity: 0.9; z-index: 15; }
+        
+        /* ─── Smart Date Input ─── */
+        .date-input-wrapper { display: flex; gap: 5px; position: relative; }
+        .date-input-wrapper input[type="text"].date-smart { font-family: monospace; letter-spacing: 0.5px; }
+
 </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
@@ -721,6 +739,9 @@
 
         <!-- Mating fields -->
         <div id="mating-fields">
+            <div class="chip-row">
+                <label class="chip-toggle pregnant-toggle"><input type="checkbox" id="m-pregnant"> <span>🤰 임신중</span></label>
+            </div>
             <div class="form-group">
                 <label>DOM (교배일)</label>
                 <div style="display:flex;gap:8px;">
@@ -770,6 +791,16 @@
 
         <!-- Breeding fields -->
         <div id="breeding-fields">
+            <div class="chip-row">
+                <label class="chip-toggle"><input type="checkbox" id="b-gdone"> <span>G완</span></label>
+                <div id="gdone-sub" class="chip-sub-row" style="display:none">
+                    <label class="chip-toggle sub"><input type="radio" name="gtype" value="homo"> homo</label>
+                    <label class="chip-toggle sub"><input type="radio" name="gtype" value="het"> het</label>
+                    <label class="chip-toggle sub"><input type="radio" name="gtype" value="tg"> tg</label>
+                    <label class="chip-toggle sub"><input type="radio" name="gtype" value="분류전"> 분류전</label>
+                </div>
+                <label class="chip-toggle"><input type="checkbox" id="b-gpre"> <span>G전</span></label>
+            </div>
             <div class="form-row">
                 <div class="form-group" style="flex:1;">
                     <label>성별</label>
@@ -1218,13 +1249,28 @@
     }
 
     function checkAndSaveSnapshot(data) {
-        const todayStr = getMondayStr(new Date()).replace(/-\d{2}$/, '-' + String(new Date().getDate()).padStart(2,'0')); // YYYY-MM-DD
+        const d = new Date();
+        const todayStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         fbDb.ref('snapshots/lastDate').once('value').then(snap => {
             if (snap.val() !== todayStr) {
                 let updates = {};
                 updates['snapshots/lastDate'] = todayStr;
                 updates['snapshots/' + todayStr] = data;
-                fbDb.update(updates).then(() => console.log('Daily snapshot saved:', todayStr));
+                fbDb.update(updates).then(() => {
+                    console.log('Daily snapshot saved:', todayStr);
+                    // 2주 지난 스냅샷 자동 삭제
+                    fbDb.ref('snapshots').once('value').then(allSnaps => {
+                        const cutoff = new Date();
+                        cutoff.setDate(cutoff.getDate() - 14);
+                        const cutoffStr = cutoff.getFullYear() + '-' + String(cutoff.getMonth() + 1).padStart(2, '0') + '-' + String(cutoff.getDate()).padStart(2, '0');
+                        allSnaps.forEach(child => {
+                            if (child.key !== 'lastDate' && child.key < cutoffStr) {
+                                fbDb.ref('snapshots/' + child.key).remove();
+                                console.log('Old snapshot deleted:', child.key);
+                            }
+                        });
+                    });
+                });
             }
         });
     }
@@ -1252,7 +1298,11 @@
             editLog = [];
             saveLog();
             refreshLogPanel();
-            debouncedSyncToSheet();
+            if (fbDataRef) {
+                fbDataRef.update({ logs: [] }).then(() => {
+                    debouncedPushToSheet();
+                });
+            }
         }
     }
 
@@ -1703,7 +1753,36 @@ document.addEventListener('pointerdown', (e) => {
         delBtn.innerHTML = '🗑️ 일괄 삭제';
         delBtn.onclick = () => {
             if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 정말 삭제하시겠습니까?`)) return;
-            startTransaction();
+            
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
+        startTransaction();
             let dc = 0;
             selectedIds.forEach(cid => {
                 const cIdx = cages.findIndex(c => c.id === cid);
@@ -1776,7 +1855,36 @@ document.addEventListener('pointerdown', (e) => {
             
             let deletedCount = 0;
             const idsToDelete = new Set(dragData.items.map(i => i.id));
-            startTransaction();
+            
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
+        startTransaction();
             cages = cages.filter(c => {
                 if (idsToDelete.has(c.id)) {
                     logAction('delete', `Cage ${c.id} deleted (drag to trash)`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -1824,6 +1932,35 @@ document.addEventListener('pointerdown', (e) => {
             const badge = document.getElementById('drag-badge'); if (badge) badge.remove();
             item.el.remove();
         });
+
+        
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
 
         startTransaction();
         if (finalIdx !== -1) {
@@ -2273,6 +2410,34 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-code').value = c.code;
             document.getElementById('m-sub').value = c.subId;
             document.getElementById('m-notes').value = c.notes || '';
+            
+            // Reset chips
+            document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
+            document.getElementById('gdone-sub').style.display = 'none';
+            
+            // Set Pregnant
+            if (c.pregnant) {
+                document.getElementById('m-pregnant').checked = true;
+                document.getElementById('m-pregnant').parentElement.classList.add('active-pregnant');
+            }
+            
+            // Parse G완/G전 from notes
+            if (c.notes) {
+                const gdoneMatch = c.notes.match(/G완(?:\(([^)]+)\))?/);
+                if (gdoneMatch) {
+                    const chk = document.getElementById('b-gdone');
+                    chk.checked = true; chk.parentElement.classList.add('active-red');
+                    document.getElementById('gdone-sub').style.display = 'flex';
+                    if (gdoneMatch[1]) {
+                        const r = document.querySelector(`input[name="gtype"][value="${gdoneMatch[1]}"]`);
+                        if (r) { r.checked = true; r.parentElement.classList.add('active'); }
+                    }
+                } else if (c.notes.includes('G전')) {
+                    const chk = document.getElementById('b-gpre');
+                    chk.checked = true; chk.parentElement.classList.add('active-blue');
+                }
+            }
+
             document.getElementById('m-dom').value = c.dom || '';
             document.getElementById('m-male-count').value = c.mMale || 0;
             document.getElementById('m-male-geno').value = c.mGeno || '';
@@ -2308,6 +2473,8 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-code').value = '';
             document.getElementById('m-sub').value = '';
             document.getElementById('m-notes').value = '';
+            document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
+            document.getElementById('gdone-sub').style.display = 'none';
             document.getElementById('m-dom').value = '';
             document.getElementById('m-male-count').value = '';
             document.getElementById('m-male-geno').value = '';
@@ -2361,6 +2528,35 @@ document.addEventListener('pointerdown', (e) => {
             bDob: document.getElementById('b-dob').value
         };
 
+        
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
         startTransaction();
         if (id) {
             const prev = cages.find(x => x.id === id);
@@ -2405,6 +2601,35 @@ document.addEventListener('pointerdown', (e) => {
     }
 
     function deleteCage() {
+        
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
         startTransaction();
         const targetId = document.getElementById('m-id').value;
         const c = cages.find(x => x.id === targetId);
@@ -2536,7 +2761,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhtEh-y2p5cnZU7qxmSLQTlqpiaynPzW0GkAGC9DwjGxBrVB4cBD8Nt4se_raxfeQM/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjoPXC2wsmc6Lg8G_r83R6UrSb1gweaebJ51IvmePJYnkIrLL1fULYRQwERR1c9IKY/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2672,6 +2897,7 @@ document.addEventListener('pointerdown', (e) => {
             console.log('Firebase 실시간 업데이트 수신');
         }
         isDataLoaded = true;
+        checkAndSaveSnapshot(data);
     }, (error) => {
         console.error("Firebase 권한 에러:", error);
         document.getElementById('connection-status').innerText = '🔴 DB 접근 권한 없음 (Rules 확인)';
@@ -2681,7 +2907,8 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── 구글 시트 → Firebase 1회 마이그레이션 ────
     async function migrateFromGoogleSheet() {
-        if (!SCRIPT_URL) { isDataLoaded = true; return; }
+        if (!SCRIPT_URL) { isDataLoaded = true;
+        checkAndSaveSnapshot(data); return; }
         try {
             const res = await fetch(SCRIPT_URL + '?action=load&key=' + API_KEY + '&_t=' + Date.now(), {
                 method: 'GET', cache: 'no-store', redirect: 'follow'
@@ -2706,15 +2933,18 @@ document.addEventListener('pointerdown', (e) => {
                 }
                 if (data.logs) editLog = data.logs;
                 isDataLoaded = true;
+        checkAndSaveSnapshot(data);
                 saveToFirebase(true); // Firebase에 저장하여 이후부터 Firebase가 메인
                 renderMainBoard(); buildLeftSidebar();
                 console.log('구글 시트 → Firebase 마이그레이션 완료!');
             } else {
                 isDataLoaded = true;
+        checkAndSaveSnapshot(data);
             }
         } catch(e) {
             console.error('마이그레이션 실패', e);
             isDataLoaded = true;
+        checkAndSaveSnapshot(data);
         }
     }
 
@@ -2856,7 +3086,36 @@ document.addEventListener('pointerdown', (e) => {
                     });
                     
                     let deletedCount = 0;
-                    startTransaction();
+                    
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
+        startTransaction();
                     cages = cages.filter(c => {
                         if (selectedIds.has(c.id)) {
                             logAction('delete', `Cage ${c.id} cut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -2883,7 +3142,36 @@ document.addEventListener('pointerdown', (e) => {
                     let anchorY = Math.floor(anchorSlot / 7);
                     
                     let pastedCount = 0;
-                    startTransaction();
+                    
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
+        startTransaction();
                     for (let cData of copiedCagesData) {
                         let targetX = anchorX + (cData.relX || 0);
                         let targetY = anchorY + (cData.relY || 0);
@@ -2939,7 +3227,36 @@ document.addEventListener('pointerdown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (isBatchMode && selectedIds.size > 0) {
                 let deletedCount = 0;
-                startTransaction();
+                
+        // Auto-format Baby notes
+        if(info.notes) {
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+        }
+        
+        // Append G완/G전 and Pregnant if applicable
+        if (info.type === 'breeding' || info.type === 'experiment') {
+            const isGdone = document.getElementById('b-gdone').checked;
+            const isGpre = document.getElementById('b-gpre').checked;
+            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
+            let gStr = '';
+            if (isGdone) {
+                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
+            } else if (isGpre) {
+                gStr = 'G전';
+            }
+            if (gStr) {
+                // remove existing G완/G전
+                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
+                info.notes = (gStr + ' ' + info.notes).trim();
+            }
+        }
+        
+        if (info.type === 'mating') {
+            const isPregnant = document.getElementById('m-pregnant').checked;
+            info.pregnant = isPregnant;
+        }
+
+        startTransaction();
                 cages = cages.filter(c => {
                     if (selectedIds.has(c.id)) {
                         logAction('delete', `Cage ${c.id} deleted by shortcut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
