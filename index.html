@@ -2063,6 +2063,7 @@ document.addEventListener('pointerdown', (e) => {
 
     function getBreedingNoteColor(n) {
             if (!n) return '#000000';
+            if (n.includes('G완(분류전)')) return '#0000FF';
             if (n.includes('G완')) return '#FF0000';
             if (n.includes('G전')) return '#0000FF';
             return '#000000';
@@ -2424,8 +2425,8 @@ document.addEventListener('pointerdown', (e) => {
                     if (gStr) noteVal = (gStr + ' ' + noteVal).trim();
                 } else if (document.getElementById('mating-fields').style.display !== 'none') {
                     const isPreg = document.getElementById('m-pregnant').checked;
-                    noteVal = noteVal.replace(/\(임신중\)/g, '').trim();
-                    if (isPreg) noteVal = ('(임신중) ' + noteVal).trim();
+                    noteVal = noteVal.replace(/\(?임신중\)?\s*/g, '').trim();
+                    if (isPreg) noteVal = ('임신중 ' + noteVal).trim();
                 }
                 document.getElementById('m-notes').value = noteVal;
             });
@@ -2604,9 +2605,9 @@ document.addEventListener('pointerdown', (e) => {
         if (info.type === 'mating') {
             const isPregnant = document.getElementById('m-pregnant').checked;
             info.pregnant = isPregnant;
-            info.notes = info.notes.replace(/\(임신중\)/g, '').trim();
+            info.notes = info.notes.replace(/\(?임신중\)?\s*/g, '').trim();
             if (isPregnant) {
-                info.notes = ('(임신중) ' + info.notes).trim();
+                info.notes = ('임신중 ' + info.notes).trim();
             }
         }
         startTransaction();
@@ -2784,7 +2785,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('dev_animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZm5AExiFQHEaYq-Pemz-B3H9dgNpFA6NEgl0MLoXZj9bG1haCMbGxVJ2XN9TzUUJj/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXVGCJMRcGE3b9UDO4_QDAj9QbGiN7qRzAg1CTt62pUfrb4Kt7dkO5-tWiNiLz6if9/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
