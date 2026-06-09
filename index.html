@@ -448,7 +448,14 @@
         .chip-toggle.active-red { background: rgba(255,55,95,0.15); border-color: rgba(255,55,95,0.5); color: #FF375F; }
         .chip-toggle.active-blue { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.5); color: #0a84ff; }
         .chip-toggle.active-pregnant { background: rgba(255,159,10,0.15); border-color: rgba(255,159,10,0.5); color: #ff9f0a; }
-        .chip-sub-row { display: none; margin-left: 4px; }
+        .chip-sub-row {
+            display: flex; gap: 6px; align-items: center;
+            background: rgba(255,255,255,0.03);
+            border-left: 2px solid #ff453a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
         .chip-sub-row.visible { display: flex; gap: 6px; }
         .chip-toggle.sub { font-size: 11px; padding: 3px 10px; }
         .pregnant-indicator { position: absolute; bottom: 2px; right: 4px; font-size: 11px; opacity: 0.9; z-index: 15; }
@@ -2467,6 +2474,10 @@ document.addEventListener('pointerdown', (e) => {
         if (info.type === 'mating') {
             const isPregnant = document.getElementById('m-pregnant').checked;
             info.pregnant = isPregnant;
+            info.notes = info.notes.replace(/\(임신중\)/g, '').trim();
+            if (isPregnant) {
+                info.notes = ('(임신중) ' + info.notes).trim();
+            }
         }
         startTransaction();
         if (id) {
@@ -3095,7 +3106,7 @@ document.addEventListener('pointerdown', (e) => {
 document.getElementById('title-version-span').innerText = APP_VERSION;
 </script>
 
-<div class="help-fab-wrapper" ontouchstart=""><button class="help-fab" onclick="startTour()" title="사용법 가이드">💡</button></div>
+<div class="help-fab-wrapper" ontouchstart="" style="display:none;"><button class="help-fab" onclick="startTour()" title="사용법 가이드">💡</button></div>
 
 
 <script>

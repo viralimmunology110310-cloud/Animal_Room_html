@@ -6,13 +6,21 @@ function doPost(e) {
     if (data.action === 'save') {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-      // DB 저장 (히든 시트 A1에 JSON 전체 저장)
+      // DB 저장 (히든 시트 청크 단위 분할 저장)
       let dbSheet = ss.getSheetByName('DB');
       if (!dbSheet) {
         dbSheet = ss.insertSheet('DB');
         dbSheet.hideSheet();
       }
-      dbSheet.getRange('A1').setValue(rawData);
+      dbSheet.clear();
+      const CHUNK_SIZE = 40000;
+      const chunks = [];
+      for (let i = 0; i < rawData.length; i += CHUNK_SIZE) {
+        chunks.push([rawData.substring(i, i + CHUNK_SIZE)]);
+      }
+      if (chunks.length > 0) {
+        dbSheet.getRange(1, 1, chunks.length, 1).setValues(chunks);
+      }
 
       // Strain Map 시트 포맷팅 및 업데이트
       updateStrainMapSheet(ss, data);
@@ -298,9 +306,15 @@ function formatMatingSheet(ss, data, reservationMap) {
     rowData[4] = mNum;
     rowData[5] = fNum;
     rowData[6] = formatDateDots(c.mDob);
-    rowData[7] = formatDateDots(c.mDow);
+    rowData[7] = formatDateDots(c.dom);
     let note = c.notes || '';
-    const resv = reservationMap[c.code + '_' + c.subId];
+    const sanDobM = c.mDob ? String(c.mDob).replace(/\D/g, '') : '';
+    const sanDobF = c.fDob ? String(c.fDob).replace(/\D/g, '') : '';
+    let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
+    if (!resv && c.mFemale && !sanDobF) {
+       // fallback if DOB missing
+       resv = reservationMap[c.code + '_f_' + c.mFemale + '_'];
+    }
     if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
     rowData[8] = note;
     rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
@@ -497,7 +511,13 @@ function formatBreedingSheet(ss, data, reservationMap) {
     rowData[5] = c.bCount;
     rowData[6] = formatDateDots(c.bDob);
     let note = c.notes || '';
-    const resv = reservationMap[c.code + '_' + c.subId];
+    const sanDobM = c.mDob ? String(c.mDob).replace(/\D/g, '') : '';
+    const sanDobF = c.fDob ? String(c.fDob).replace(/\D/g, '') : '';
+    let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
+    if (!resv && c.mFemale && !sanDobF) {
+       // fallback if DOB missing
+       resv = reservationMap[c.code + '_f_' + c.mFemale + '_'];
+    }
     if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
     rowData[7] = note;
     rowData[8] = isGDone ? '' : `${c.code}${c.subId}`;
@@ -705,13 +725,19 @@ function getReservationMap() {
       let cageNo = String(row[1] || '').trim();
       let resv = String(row[7] || '').trim();
       
-      // 스트레인 기호 추출 로직 (A, C, D 등)
       if (rawStrain) {
          currentStrain = rawStrain;
       }
       
-      if (currentStrain && cageNo && resv) {
-         const key = currentStrain.toUpperCase() + '_' + cageNo;
+      let sex = String(row[3] || '').trim().toLowerCase();
+      let head = String(row[4] || '').trim();
+      let rawDob = String(row[5] || '').trim();
+      
+      let sanDob = rawDob.replace(/\D/g, ''); // 2026. 06. 09. -> 20260609
+      if (sanDob.length === 6) { sanDob = '20' + sanDob; }
+      
+      if (currentStrain && sex && head && sanDob && resv) {
+         const key = currentStrain.toUpperCase() + '_' + sex + '_' + head + '_' + sanDob;
          map[key] = resv;
       }
     });
