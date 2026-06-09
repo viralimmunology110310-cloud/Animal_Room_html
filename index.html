@@ -2581,7 +2581,7 @@ document.addEventListener('pointerdown', (e) => {
 
         // Auto-format Baby notes
         if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
+            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리 ($2/$3)');
         }
         
         // Append G완/G전 and Pregnant if applicable
