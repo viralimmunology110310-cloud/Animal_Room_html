@@ -452,9 +452,19 @@
             display: flex; gap: 6px; align-items: center;
             background: rgba(255,255,255,0.03);
             border-left: 2px solid #ff453a;
-            padding: 4px 8px;
+            padding: 0 8px;
             border-radius: 4px;
             margin-left: 4px;
+            overflow: hidden;
+            max-width: 0;
+            opacity: 0;
+            transition: max-width 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+            white-space: nowrap;
+        }
+        .chip-sub-row.show {
+            max-width: 300px;
+            opacity: 1;
+            padding: 4px 8px;
         }
         .chip-sub-row.visible { display: flex; gap: 6px; }
         .chip-toggle.sub { font-size: 11px; padding: 3px 10px; }
@@ -800,7 +810,7 @@
         <div id="breeding-fields">
             <div class="chip-row">
                 <label class="chip-toggle"><input type="checkbox" id="b-gdone"> <span>G완</span></label>
-                <div id="gdone-sub" class="chip-sub-row" style="display:none">
+                <div id="gdone-sub" class="chip-sub-row">
                     <label class="chip-toggle sub"><input type="radio" name="gtype" value="homo"> homo</label>
                     <label class="chip-toggle sub"><input type="radio" name="gtype" value="het"> het</label>
                     <label class="chip-toggle sub"><input type="radio" name="gtype" value="tg"> tg</label>
@@ -2333,7 +2343,7 @@ document.addEventListener('pointerdown', (e) => {
             
             // Reset chips
             document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
-            document.getElementById('gdone-sub').style.display = 'none';
+            document.getElementById('gdone-sub').classList.remove('show');
             
             // Set Pregnant
             if (c.pregnant) {
@@ -2347,7 +2357,7 @@ document.addEventListener('pointerdown', (e) => {
                 if (gdoneMatch) {
                     const chk = document.getElementById('b-gdone');
                     chk.checked = true; chk.parentElement.classList.add('active-red');
-                    document.getElementById('gdone-sub').style.display = 'flex';
+                    document.getElementById('gdone-sub').classList.add('show');
                     if (gdoneMatch[1]) {
                         const r = document.querySelector(`input[name="gtype"][value="${gdoneMatch[1]}"]`);
                         if (r) { r.checked = true; r.parentElement.classList.add('active'); }
@@ -2394,7 +2404,7 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-sub').value = '';
             document.getElementById('m-notes').value = '';
             document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
-            document.getElementById('gdone-sub').style.display = 'none';
+            document.getElementById('gdone-sub').classList.remove('show');
             document.getElementById('m-dom').value = '';
             document.getElementById('m-male-count').value = '';
             document.getElementById('m-male-geno').value = '';
