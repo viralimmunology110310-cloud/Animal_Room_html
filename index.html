@@ -2496,7 +2496,7 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-female-count').value = c.mFemale || 0;
             document.getElementById('m-female-geno').value = c.fGeno || '';
             document.getElementById('m-female-dob').value = c.fDob || '';
-            document.getElementById('b-gender').value = c.gender || 'unknown';
+            document.getElementById('b-gender').value = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '');
             document.getElementById('b-count').value = c.bCount || 0;
             document.getElementById('b-dob').value = c.bDob || '';
             document.getElementById('btn-delete').style.display = 'block';
