@@ -1211,7 +1211,7 @@
         const listDiv = document.getElementById('snapshot-list');
         listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">목록을 불러오는 중...</div>';
         
-        fbDb.ref('snapshots').once('value').then(snapshot => {
+        fbDb.ref('dev_snapshots').once('value').then(snapshot => {
             const data = snapshot.val();
             if (!data) {
                 listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">저장된 스냅샷이 없습니다.</div>';
@@ -1237,7 +1237,7 @@
 
     function restoreSnapshot(dateKey) {
         if (!confirm(`${dateKey} 시점으로 데이터를 복구하시겠습니까?\n현재 데이터는 유실됩니다!`)) return;
-        fbDb.ref('snapshots/' + dateKey).once('value').then(snapshot => {
+        fbDb.ref('dev_snapshots/' + dateKey).once('value').then(snapshot => {
             const data = snapshot.val();
             if (data) {
                 fbDataRef.set(data).then(() => {
@@ -1251,7 +1251,7 @@
     function checkAndSaveSnapshot(data) {
         const d = new Date();
         const todayStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        fbDb.ref('snapshots/lastDate').once('value').then(snap => {
+        fbDb.ref('dev_snapshots/lastDate').once('value').then(snap => {
             if (snap.val() !== todayStr) {
                 let updates = {};
                 updates['snapshots/lastDate'] = todayStr;
@@ -1259,13 +1259,13 @@
                 fbDb.update(updates).then(() => {
                     console.log('Daily snapshot saved:', todayStr);
                     // 2주 지난 스냅샷 자동 삭제
-                    fbDb.ref('snapshots').once('value').then(allSnaps => {
+                    fbDb.ref('dev_snapshots').once('value').then(allSnaps => {
                         const cutoff = new Date();
                         cutoff.setDate(cutoff.getDate() - 14);
                         const cutoffStr = cutoff.getFullYear() + '-' + String(cutoff.getMonth() + 1).padStart(2, '0') + '-' + String(cutoff.getDate()).padStart(2, '0');
                         allSnaps.forEach(child => {
                             if (child.key !== 'lastDate' && child.key < cutoffStr) {
-                                fbDb.ref('snapshots/' + child.key).remove();
+                                fbDb.ref('dev_snapshots/' + child.key).remove();
                                 console.log('Old snapshot deleted:', child.key);
                             }
                         });
@@ -2758,7 +2758,7 @@ document.addEventListener('pointerdown', (e) => {
     };
     firebase.initializeApp(firebaseConfig);
     const fbDb = firebase.database();
-    const fbDataRef = fbDb.ref('animalRoom');
+    const fbDataRef = fbDb.ref('dev_animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjoPXC2wsmc6Lg8G_r83R6UrSb1gweaebJ51IvmePJYnkIrLL1fULYRQwERR1c9IKY/exec'; 
