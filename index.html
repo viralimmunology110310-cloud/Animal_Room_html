@@ -1753,36 +1753,7 @@ document.addEventListener('pointerdown', (e) => {
         delBtn.innerHTML = '🗑️ 일괄 삭제';
         delBtn.onclick = () => {
             if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 정말 삭제하시겠습니까?`)) return;
-            
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                    startTransaction();
             let dc = 0;
             selectedIds.forEach(cid => {
                 const cIdx = cages.findIndex(c => c.id === cid);
@@ -1855,36 +1826,7 @@ document.addEventListener('pointerdown', (e) => {
             
             let deletedCount = 0;
             const idsToDelete = new Set(dragData.items.map(i => i.id));
-            
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                    startTransaction();
             cages = cages.filter(c => {
                 if (idsToDelete.has(c.id)) {
                     logAction('delete', `Cage ${c.id} deleted (drag to trash)`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -1933,36 +1875,7 @@ document.addEventListener('pointerdown', (e) => {
             item.el.remove();
         });
 
-        
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                startTransaction();
         if (finalIdx !== -1) {
             const result = calculateShiftLogic(finalIdx);
             if (result) {
@@ -2528,7 +2441,6 @@ document.addEventListener('pointerdown', (e) => {
             bDob: document.getElementById('b-dob').value
         };
 
-        
         // Auto-format Baby notes
         if(info.notes) {
             info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
@@ -2556,7 +2468,6 @@ document.addEventListener('pointerdown', (e) => {
             const isPregnant = document.getElementById('m-pregnant').checked;
             info.pregnant = isPregnant;
         }
-
         startTransaction();
         if (id) {
             const prev = cages.find(x => x.id === id);
@@ -2601,36 +2512,7 @@ document.addEventListener('pointerdown', (e) => {
     }
 
     function deleteCage() {
-        
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                startTransaction();
         const targetId = document.getElementById('m-id').value;
         const c = cages.find(x => x.id === targetId);
         if (c) logAction('delete', `Cage ${targetId} deleted`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}${c.subId} (${c.type})`);
@@ -3086,36 +2968,7 @@ document.addEventListener('pointerdown', (e) => {
                     });
                     
                     let deletedCount = 0;
-                    
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                            startTransaction();
                     cages = cages.filter(c => {
                         if (selectedIds.has(c.id)) {
                             logAction('delete', `Cage ${c.id} cut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
@@ -3142,36 +2995,7 @@ document.addEventListener('pointerdown', (e) => {
                     let anchorY = Math.floor(anchorSlot / 7);
                     
                     let pastedCount = 0;
-                    
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                            startTransaction();
                     for (let cData of copiedCagesData) {
                         let targetX = anchorX + (cData.relX || 0);
                         let targetY = anchorY + (cData.relY || 0);
@@ -3227,36 +3051,7 @@ document.addEventListener('pointerdown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (isBatchMode && selectedIds.size > 0) {
                 let deletedCount = 0;
-                
-        // Auto-format Baby notes
-        if(info.notes) {
-            info.notes = info.notes.replace(/baby\s*(\d+)\s*(?:마리)?\s*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\)/gi, 'Baby $1마리($2/$3)');
-        }
-        
-        // Append G완/G전 and Pregnant if applicable
-        if (info.type === 'breeding' || info.type === 'experiment') {
-            const isGdone = document.getElementById('b-gdone').checked;
-            const isGpre = document.getElementById('b-gpre').checked;
-            const gtypeNode = document.querySelector('input[name="gtype"]:checked');
-            let gStr = '';
-            if (isGdone) {
-                gStr = gtypeNode ? `G완(${gtypeNode.value})` : 'G완';
-            } else if (isGpre) {
-                gStr = 'G전';
-            }
-            if (gStr) {
-                // remove existing G완/G전
-                info.notes = info.notes.replace(/G완(?:\([^)]+\))?/g, '').replace(/G전/g, '').trim();
-                info.notes = (gStr + ' ' + info.notes).trim();
-            }
-        }
-        
-        if (info.type === 'mating') {
-            const isPregnant = document.getElementById('m-pregnant').checked;
-            info.pregnant = isPregnant;
-        }
-
-        startTransaction();
+                        startTransaction();
                 cages = cages.filter(c => {
                     if (selectedIds.has(c.id)) {
                         logAction('delete', `Cage ${c.id} deleted by shortcut`, `Rack ${c.rackId} / slot ${c.cellIdx} — ${c.code}`);
