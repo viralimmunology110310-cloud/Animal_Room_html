@@ -1180,7 +1180,7 @@
         const listDiv = document.getElementById('snapshot-list');
         listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">목록을 불러오는 중...</div>';
         
-        fbDb.ref('dev_snapshots').once('value').then(snapshot => {
+        fbDb.ref('snapshots').once('value').then(snapshot => {
             const data = snapshot.val();
             if (!data) {
                 listDiv.innerHTML = '<div style="color:#888; font-size:12px; text-align:center;">저장된 스냅샷이 없습니다.</div>';
@@ -1206,7 +1206,7 @@
 
     function restoreSnapshot(dateKey) {
         if (!confirm(`${dateKey} 시점으로 데이터를 복구하시겠습니까?\n현재 데이터는 유실됩니다!`)) return;
-        fbDb.ref('dev_snapshots/' + dateKey).once('value').then(snapshot => {
+        fbDb.ref('snapshots/' + dateKey).once('value').then(snapshot => {
             const data = snapshot.val();
             if (data) {
                 fbDataRef.set(data).then(() => {
@@ -2533,10 +2533,10 @@ document.addEventListener('pointerdown', (e) => {
     };
     firebase.initializeApp(firebaseConfig);
     const fbDb = firebase.database();
-    const fbDataRef = fbDb.ref('dev_animalRoom');
+    const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwBjXf8HAhsE0C_rCP_wwrmGRxDGVpiN1r-vJs7WZkn8e4-yVghDG_jZBp9OqiqzHjz/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhtEh-y2p5cnZU7qxmSLQTlqpiaynPzW0GkAGC9DwjGxBrVB4cBD8Nt4se_raxfeQM/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
@@ -2735,7 +2735,7 @@ document.addEventListener('pointerdown', (e) => {
         }
     }
 
-    const APP_VERSION = 'v3.0.0-dev';
+    const APP_VERSION = 'v2.7.17';
     // Keyboard navigation in modal
     window.navigateModal = function(dir) {
         if (modal.style.display !== 'flex') return;
