@@ -308,8 +308,14 @@ function formatMatingSheet(ss, data, reservationMap) {
     rowData[6] = formatDateDots(c.mDob);
     rowData[7] = formatDateDots(c.dom);
     let note = c.notes || '';
-    const sanDobM = c.mDob ? String(c.mDob).replace(/\D/g, '') : '';
-    const sanDobF = c.fDob ? String(c.fDob).replace(/\D/g, '') : '';
+    const parseDob = (raw) => {
+      if (!raw) return '';
+      let p = String(raw).split(/[\/\-.]+/).filter(Boolean);
+      if (p.length === 3) return (p[0].length===2?'20'+p[0]:p[0]) + p[1].padStart(2,'0') + p[2].padStart(2,'0');
+      let n = String(raw).replace(/\D/g, ''); return n.length===6 ? '20'+n : n;
+    };
+    const sanDobM = parseDob(c.mDob);
+    const sanDobF = parseDob(c.fDob);
     let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
     if (!resv && c.mFemale && !sanDobF) {
        // fallback if DOB missing
@@ -330,7 +336,8 @@ function formatMatingSheet(ss, data, reservationMap) {
 
     let color = '#000000';
     if (c.notes) {
-      if (c.notes.includes('G완')) color = '#FF0000';
+      if (c.notes.includes('G완(분류전)')) color = '#0000FF';
+      else if (c.notes.includes('G완')) color = '#FF0000';
       else if (c.notes.includes('G전')) color = '#0000FF';
     }
     richTexts.push(color);
@@ -511,8 +518,14 @@ function formatBreedingSheet(ss, data, reservationMap) {
     rowData[5] = c.bCount;
     rowData[6] = formatDateDots(c.bDob);
     let note = c.notes || '';
-    const sanDobM = c.mDob ? String(c.mDob).replace(/\D/g, '') : '';
-    const sanDobF = c.fDob ? String(c.fDob).replace(/\D/g, '') : '';
+    const parseDob = (raw) => {
+      if (!raw) return '';
+      let p = String(raw).split(/[\/\-.]+/).filter(Boolean);
+      if (p.length === 3) return (p[0].length===2?'20'+p[0]:p[0]) + p[1].padStart(2,'0') + p[2].padStart(2,'0');
+      let n = String(raw).replace(/\D/g, ''); return n.length===6 ? '20'+n : n;
+    };
+    const sanDobM = parseDob(c.mDob);
+    const sanDobF = parseDob(c.fDob);
     let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
     if (!resv && c.mFemale && !sanDobF) {
        // fallback if DOB missing
@@ -533,7 +546,8 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
     let color = '#000000';
     if (c.notes) {
-      if (c.notes.includes('G완')) color = '#FF0000';
+      if (c.notes.includes('G완(분류전)')) color = '#0000FF';
+      else if (c.notes.includes('G완')) color = '#FF0000';
       else if (c.notes.includes('G전')) color = '#0000FF';
     }
     richTexts.push(color);
@@ -733,8 +747,17 @@ function getReservationMap() {
       let head = String(row[4] || '').trim();
       let rawDob = String(row[5] || '').trim();
       
-      let sanDob = rawDob.replace(/\D/g, ''); // 2026. 06. 09. -> 20260609
-      if (sanDob.length === 6) { sanDob = '20' + sanDob; }
+      let sanDob = '';
+      let parts = rawDob.split(/[\/\-.]+/).filter(Boolean);
+      if (parts.length === 3) {
+         let y = parts[0].length === 2 ? '20' + parts[0] : parts[0];
+         let m = parts[1].padStart(2, '0');
+         let d = parts[2].padStart(2, '0');
+         sanDob = y + m + d;
+      } else {
+         sanDob = rawDob.replace(/\D/g, '');
+         if (sanDob.length === 6) sanDob = '20' + sanDob;
+      }
       
       if (currentStrain && sex && head && sanDob && resv) {
          const key = currentStrain.toUpperCase() + '_' + sex + '_' + head + '_' + sanDob;
