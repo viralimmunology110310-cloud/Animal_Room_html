@@ -316,10 +316,10 @@ function formatMatingSheet(ss, data, reservationMap) {
     };
     const sanDobM = parseDob(c.mDob);
     const sanDobF = parseDob(c.fDob);
-    let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
+    let codeUp = String(c.code || '').toUpperCase();
+    let resv = reservationMap[codeUp + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[codeUp + '_f_' + c.mFemale + '_' + sanDobF];
     if (!resv && c.mFemale && !sanDobF) {
-       // fallback if DOB missing
-       resv = reservationMap[c.code + '_f_' + c.mFemale + '_'];
+       resv = reservationMap[codeUp + '_f_' + c.mFemale + '_'];
     }
     if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
     rowData[8] = note;
@@ -524,12 +524,12 @@ function formatBreedingSheet(ss, data, reservationMap) {
       if (p.length === 3) return (p[0].length===2?'20'+p[0]:p[0]) + p[1].padStart(2,'0') + p[2].padStart(2,'0');
       let n = String(raw).replace(/\D/g, ''); return n.length===6 ? '20'+n : n;
     };
-    const sanDobM = parseDob(c.mDob);
-    const sanDobF = parseDob(c.fDob);
-    let resv = reservationMap[c.code + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[c.code + '_f_' + c.mFemale + '_' + sanDobF];
-    if (!resv && c.mFemale && !sanDobF) {
-       // fallback if DOB missing
-       resv = reservationMap[c.code + '_f_' + c.mFemale + '_'];
+    let codeUp = String(c.code || '').toUpperCase();
+    let sexChar = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '');
+    const sanDob = parseDob(c.bDob);
+    let resv = reservationMap[codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_' + sanDob];
+    if (!resv && !sanDob) {
+       resv = reservationMap[codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_'];
     }
     if (resv) note = (note ? note + '\n' : '') + '[예약: ' + resv + ']';
     rowData[7] = note;
