@@ -1,3 +1,25 @@
+function doGet(e) {
+  // 웹훅으로 호출되면 Firebase에서 최신 데이터를 가져와 시트 업데이트
+  const fbUrl = 'https://small-animal-room-default-rtdb.firebaseio.com/dev_animalRoom.json';
+  try {
+    const response = UrlFetchApp.fetch(fbUrl);
+    const data = JSON.parse(response.getContentText());
+    if (data) {
+       // mock an event object to reuse doPost logic
+       const mockEvent = {
+           postData: {
+               contents: JSON.stringify(data)
+           }
+       };
+       doPost(mockEvent);
+       return ContentService.createTextOutput("Sync Successful");
+    }
+  } catch (err) {
+    return ContentService.createTextOutput("Sync Failed: " + err.toString());
+  }
+  return ContentService.createTextOutput("No Data");
+}
+
 function doPost(e) {
   try {
     const rawData = e.postData.contents;
