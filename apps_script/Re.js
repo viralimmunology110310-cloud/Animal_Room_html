@@ -753,16 +753,19 @@ function getReservationMap() {
     if (!resSheet) return map;
     
     // 데이터 범위: A열(Strain) ~ H열(Reservation)
-    const data = resSheet.getRange('A2:H' + Math.max(2, resSheet.getLastRow())).getValues();
+    const data = resSheet.getRange('A2:K' + Math.max(2, resSheet.getLastRow())).getValues();
     
     let currentStrain = '';
     data.forEach(row => {
       let rawStrain = String(row[0] || '').trim();
       let cageNo = String(row[1] || '').trim();
       
-      let otherVal = String(row[6] || '').trim();
-      let resvVal = String(row[7] || '').trim();
-      let resv = [otherVal, resvVal].filter(Boolean).join(', ');
+      let vals = [];
+      for (let c = 6; c <= 10; c++) {
+        let v = String(row[c] || '').trim();
+        if (v) vals.push(v);
+      }
+      let resv = vals.join(', ');
       
       if (rawStrain) {
          currentStrain = rawStrain.replace(/\s*\([^)]*\)\s*/g, '');
