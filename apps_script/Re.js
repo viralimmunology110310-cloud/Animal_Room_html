@@ -759,7 +759,10 @@ function getReservationMap() {
     data.forEach(row => {
       let rawStrain = String(row[0] || '').trim();
       let cageNo = String(row[1] || '').trim();
-      let resv = String(row[7] || '').trim();
+      
+      let otherVal = String(row[6] || '').trim();
+      let resvVal = String(row[7] || '').trim();
+      let resv = [otherVal, resvVal].filter(Boolean).join(', ');
       
       if (rawStrain) {
          currentStrain = rawStrain.replace(/\s*\([^)]*\)\s*/g, '');
