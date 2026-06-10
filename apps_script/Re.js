@@ -370,16 +370,9 @@ function formatMatingSheet(ss, data, reservationMap) {
       if (p.length === 3) return (p[0].length===2?'20'+p[0]:p[0]) + p[1].padStart(2,'0') + p[2].padStart(2,'0');
       let n = String(raw).replace(/\D/g, ''); return n.length===6 ? '20'+n : n;
     };
-    const sanDobM = parseDob(c.mDob);
     const sanDobF = parseDob(c.fDob);
     let codeUp = String(c.code || '').toUpperCase();
-    let resv = reservationMap[codeUp + '_m_' + c.mMale + '_' + sanDobM] || reservationMap[codeUp + '_f_' + c.mFemale + '_' + sanDobF];
-    if (!resv && c.mFemale && !sanDobF) {
-       resv = reservationMap[codeUp + '_f_' + c.mFemale + '_'];
-    }
-    if (resv) note = (note ? note + ', ' : '') + resv;
     rowData[8] = note;
-    rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
     rowData[14] = c.id; 
     output.push(rowData);
 
@@ -406,7 +399,6 @@ function formatMatingSheet(ss, data, reservationMap) {
     let notesRichTexts = output.map(row => [buildMatingNoteRichText(row[8])]);
     sheet.getRange(startRow, 10, output.length, 1).setRichTextValues(notesRichTexts).setHorizontalAlignment('left');
     
-    sheet.getRange(startRow, 11, output.length, 1).setFontColors(richTexts.map(c => [c]));
     sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
     
     blocks.forEach(b => {
@@ -437,11 +429,12 @@ function formatMatingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const matingWidths = [100, 76, 52, 137, 34, 44, 34, 44, 87, 168];
+  const matingWidths = [100, 76, 52, 137, 34, 44, 34, 44, 87];
   matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
+  sheet.autoResizeColumn(10);
 }
 
 function formatBreedingSheet(ss, data, reservationMap) {
@@ -613,7 +606,7 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
   if (output.length > 0) {
     sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
-    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('left');
+    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('center');
     sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
 
     blocks.forEach(b => {
@@ -649,11 +642,12 @@ function formatBreedingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168, 82];
+  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168];
   breedingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
   sheet.getRange(1, 3, 2, 7).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
+  sheet.autoResizeColumn(9);
 }
 
 // ── 구글 시트 전용 메뉴 추가 ──
