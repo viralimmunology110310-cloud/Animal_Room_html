@@ -360,10 +360,16 @@ function formatMatingSheet(ss, data, reservationMap) {
 
     const formatGeno = (count, geno) => {
       if (!count || count === '0') return '';
-      let g = String(geno || '').toLowerCase();
+      let gRaw = String(geno || '').trim();
+      let g = gRaw.toLowerCase();
       if (g.includes('het')) return `${count}(Het)`;
       if (g.includes('homo')) return `${count}(homo)`;
       if (g.includes('wt')) return `${count}(WT)`;
+      if (gRaw) {
+        let cleaned = gRaw.replace(/\bko\b/i, '').trim();
+        if (cleaned) return `${count}(${cleaned})`;
+        return `${count}(KO)`;
+      }
       return `${count}`;
     };
 
@@ -621,7 +627,7 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
   if (output.length > 0) {
     sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
-    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('left');
+    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('center');
     sheet.getRange(startRow, 10, output.length, 1).setHorizontalAlignment('left');
     sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
 
