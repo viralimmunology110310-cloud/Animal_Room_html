@@ -352,8 +352,17 @@ function formatMatingSheet(ss, data, reservationMap) {
       }
     }
 
-    let mNum = c.mMale || '';
-    let fNum = c.mFemale || '';
+    const formatGeno = (count, geno) => {
+      if (!count || count === '0') return '';
+      let g = String(geno || '').toLowerCase();
+      if (g.includes('het')) return `${count}(Het)`;
+      if (g.includes('homo')) return `${count}(homo)`;
+      if (g.includes('wt')) return `${count}(WT)`;
+      return `${count}`;
+    };
+
+    let mNum = formatGeno(c.mMale, c.mGeno);
+    let fNum = formatGeno(c.mFemale, c.fGeno);
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
     rowData[1] = globalNo++;

@@ -2014,8 +2014,10 @@ document.addEventListener('pointerdown', (e) => {
         }
         function formatGeno(count, geno) {
             if (!count || count === '0') return '';
-            let g = (geno || '').toLowerCase();
-            if (g.includes('homo') || g.includes('het')) return `${count}(${geno})`;
+            let g = String(geno || '').toLowerCase();
+            if (g.includes('het')) return `${count}(Het)`;
+            if (g.includes('homo')) return `${count}(homo)`;
+            if (g.includes('wt')) return `${count}(WT)`;
             return `${count}`;
         }
         function isSameWeek(t1, t2) {
