@@ -474,54 +474,6 @@
         .date-input-wrapper { display: flex; gap: 5px; position: relative; }
         .date-input-wrapper input[type="text"].date-smart { font-family: monospace; letter-spacing: 0.5px; }
 
-
-        .note-triangle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 0;
-            border-top: 18px solid #FF3B30;
-            border-right: 18px solid transparent;
-            z-index: 5;
-            cursor: pointer;
-        }
-        .note-triangle .tooltip-text {
-            visibility: hidden;
-            background-color: rgba(0,0,0,0.85);
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 8px 10px;
-            position: absolute;
-            z-index: 10;
-            top: 18px;
-            left: 10px;
-            font-size: 12px;
-            font-weight: normal;
-            white-space: pre-wrap;
-            width: max-content;
-            max-width: 200px;
-            opacity: 0;
-            transition: opacity 0.2s, transform 0.2s;
-            transform: translateY(-4px);
-            pointer-events: none;
-            line-height: 1.4;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            font-family: Pretendard, -apple-system, sans-serif;
-        }
-        .note-triangle:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-            transform: translateY(0);
-        }
-        @media (hover: none) {
-            .note-triangle:active .tooltip-text {
-                visibility: visible;
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
 </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
@@ -598,55 +550,7 @@
         .help-fab-wrapper .help-fab:active {
             transform: scale(0.95);
         }
-    
-        .note-triangle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 0;
-            border-top: 18px solid #FF3B30;
-            border-right: 18px solid transparent;
-            z-index: 5;
-            cursor: pointer;
-        }
-        .note-triangle .tooltip-text {
-            visibility: hidden;
-            background-color: rgba(0,0,0,0.85);
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 8px 10px;
-            position: absolute;
-            z-index: 10;
-            top: 18px;
-            left: 10px;
-            font-size: 12px;
-            font-weight: normal;
-            white-space: pre-wrap;
-            width: max-content;
-            max-width: 200px;
-            opacity: 0;
-            transition: opacity 0.2s, transform 0.2s;
-            transform: translateY(-4px);
-            pointer-events: none;
-            line-height: 1.4;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            font-family: Pretendard, -apple-system, sans-serif;
-        }
-        .note-triangle:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-            transform: translateY(0);
-        }
-        @media (hover: none) {
-            .note-triangle:active .tooltip-text {
-                visibility: visible;
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-</style>
+    </style>
 </head>
 <body>
 
@@ -2302,24 +2206,6 @@ document.addEventListener('pointerdown', (e) => {
         if (rowB) rowB.classList.remove('hover-border-red');
     };
 
-
-    function getReservationKey(c) {
-        const parseDob = (raw) => {
-            if (!raw) return '';
-            let p = String(raw).split(/[\/\-.]+/).filter(Boolean);
-            if (p.length === 3) return (p[0].length===2?'20'+p[0]:p[0]) + p[1].padStart(2,'0') + p[2].padStart(2,'0');
-            let n = String(raw).replace(/\D/g, ''); return n.length===6 ? '20'+n : n;
-        };
-        let codeUp = String(c.code || '').toUpperCase();
-        let sexChar = c.gender === 'male' ? 'm' : (c.gender === 'female' ? 'f' : '');
-        const sanDob = parseDob(c.bDob);
-        let key = codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_' + sanDob;
-        if (!window.reservationMap[key] && !sanDob) {
-            key = codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_';
-        }
-        return key;
-    }
-
     function renderMainBoard() {
         const grid = document.getElementById('main-grid');
         document.getElementById('current-rack-title').innerText = `Rack ${currentRack}`;
@@ -2371,25 +2257,7 @@ document.addEventListener('pointerdown', (e) => {
                     const label = day === 'Mon' ? '월' : day === 'Tue' ? '화' : '수';
                     dayBadgeHtml = `<div class="day-badge ${day}">${label}</div>`;
                 }
-                
-                let noteText = cage.notes || '';
-                
-                // Add reservations to the noteText if any exist
-                if (window.reservationMap && cage.type === 'breeding') {
-                    const key = getReservationKey(cage);
-                    const resv = window.reservationMap[key];
-                    if (resv) {
-                        noteText = noteText ? noteText + '
-[예약] ' + resv : '[예약] ' + resv;
-                    }
-                }
-                
-                let noteHtml = '';
-                if (noteText) {
-                    const safeText = noteText.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                    noteHtml = `<div class="note-triangle"><span class="tooltip-text">${safeText}</span></div>`;
-                }
-
+                const noteHtml = cage.notes ? `<div style="position:absolute; top:8px; left:8px; width:8px; height:8px; background-color:#FF3B30; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.3); pointer-events:none;"></div>` : '';
                 
                 contentHtml = dayBadgeHtml + contentHtml + noteHtml;
             }
@@ -2930,7 +2798,6 @@ document.addEventListener('pointerdown', (e) => {
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;
-    window.reservationMap = {};
     let _fbSaving = false; // Firebase 저장 중 플래그 (리스너 루프 방지)
 
     // ── Firebase에 데이터 저장 (내가 수정할 때마다) ────
@@ -3071,21 +2938,6 @@ document.addEventListener('pointerdown', (e) => {
         alert("Firebase 데이터베이스 접근 권한이 없습니다. Firebase 콘솔에서 Realtime Database의 '규칙(Rules)'을 확인해주세요.\n\n{\n  \"rules\": {\n    \".read\": true,\n    \".write\": true\n  }\n}");
     });
 
-    async function fetchReservations() {
-        if (!SCRIPT_URL) return;
-        try {
-            const res = await fetch(SCRIPT_URL + '?action=test_resv&_t=' + Date.now(), { method: 'GET', cache: 'no-store', redirect: 'follow' });
-            const map = await res.json();
-            if (map && !map.error) {
-                window.reservationMap = map;
-                renderMainBoard();
-            }
-        } catch (e) {
-            console.error('Failed to fetch reservations:', e);
-        }
-    }
-    
-    // Call fetchReservations after Firebase loads initially
     // ── 구글 시트 → Firebase 1회 마이그레이션 ────
     async function migrateFromGoogleSheet() {
         if (!SCRIPT_URL) { isDataLoaded = true;
