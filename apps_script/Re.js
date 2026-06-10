@@ -16,7 +16,13 @@ function doGet(e) {
             rawData = vals.map(r => r[0]).join('');
         }
         if (rawData) {
-          return ContentService.createTextOutput(rawData)
+          const data = JSON.parse(rawData);
+          try {
+            data.reservations = getReservationMap();
+          } catch(e) {
+            data.reservations = {};
+          }
+          return ContentService.createTextOutput(JSON.stringify(data))
             .setMimeType(ContentService.MimeType.JSON);
         }
       }
