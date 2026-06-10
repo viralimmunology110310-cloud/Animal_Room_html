@@ -199,6 +199,22 @@ function getMondayStr(d) {
   return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
 }
 
+function buildBreedingNoteRichText(noteStr, baseColor, resvStr) {
+  if (!noteStr) return SpreadsheetApp.newRichTextValue().setText('').build();
+  let builder = SpreadsheetApp.newRichTextValue().setText(noteStr);
+  let baseStyle = SpreadsheetApp.newTextStyle().setForegroundColor(baseColor).build();
+  builder.setTextStyle(0, noteStr.length, baseStyle);
+  
+  if (resvStr) {
+    let blackStyle = SpreadsheetApp.newTextStyle().setForegroundColor('#000000').build();
+    let resvIdx = noteStr.lastIndexOf(resvStr);
+    if (resvIdx !== -1) {
+      builder.setTextStyle(resvIdx, resvIdx + resvStr.length, blackStyle);
+    }
+  }
+  return builder.build();
+}
+
 function buildMatingNoteRichText(noteStr) {
   if (!noteStr) return SpreadsheetApp.newRichTextValue().setText('').build();
   let builder = SpreadsheetApp.newRichTextValue().setText(noteStr);
@@ -591,14 +607,13 @@ function formatBreedingSheet(ss, data, reservationMap) {
       else if (c.notes.includes('G완')) color = '#FF0000';
       else if (c.notes.includes('G전')) color = '#0000FF';
     }
-    richTexts.push(color);
+    richTexts.push([buildBreedingNoteRichText(note, color, resv)]);
   });
   if (currentBlock) blocks.push(currentBlock);
 
   if (output.length > 0) {
     sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
-    sheet.getRange(startRow, 9, output.length, 1).setFontColors(richTexts.map(c => [c]));
-    sheet.getRange(startRow, 10, output.length, 1).setHorizontalAlignment('left');
+    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('left');
     sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
 
     blocks.forEach(b => {
