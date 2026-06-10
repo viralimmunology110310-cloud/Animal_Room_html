@@ -1266,8 +1266,8 @@
         fbDb.ref('dev_snapshots/lastDate').once('value').then(snap => {
             if (snap.val() !== todayStr) {
                 let updates = {};
-                updates['snapshots/lastDate'] = todayStr;
-                updates['snapshots/' + todayStr] = data;
+                updates['dev_snapshots/lastDate'] = todayStr;
+                updates['dev_snapshots/' + todayStr] = data;
                 fbDb.update(updates).then(() => {
                     console.log('Daily snapshot saved:', todayStr);
                     // 2주 지난 스냅샷 자동 삭제
