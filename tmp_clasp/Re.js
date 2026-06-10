@@ -1,53 +1,5 @@
 function doGet(e) {
-  try {
-    var action = '';
-    if (e && e.parameter && e.parameter.action) {
-      action = e.parameter.action;
-    }
-    
-    if (action === 'load') {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const dbSheet = ss.getSheetByName('DB');
-      if (dbSheet) {
-        const lastRow = dbSheet.getLastRow();
-        let rawData = '';
-        if (lastRow > 0) {
-            const vals = dbSheet.getRange(1, 1, lastRow, 1).getValues();
-            rawData = vals.map(r => r[0]).join('');
-        }
-        if (rawData) {
-          return ContentService.createTextOutput(rawData)
-            .setMimeType(ContentService.MimeType.JSON);
-        }
-      }
-      return ContentService.createTextOutput(JSON.stringify({ cages: [], logs: [] }))
-        .setMimeType(ContentService.MimeType.JSON);
-    } else {
-      // triggerSync: DB 시트에서 데이터를 읽고, 예약 매칭표를 적용하여 시트를 다시 그림
-      // (mouse reservation 웹훅 및 기본 호출 모두 이 분기를 탐)
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const dbSheet = ss.getSheetByName('DB');
-      if (!dbSheet) return ContentService.createTextOutput("No DB sheet");
-      
-      const lastRow = dbSheet.getLastRow();
-      let rawData = '';
-      if (lastRow > 0) {
-          const vals = dbSheet.getRange(1, 1, lastRow, 1).getValues();
-          rawData = vals.map(r => r[0]).join('');
-      }
-      
-      if (rawData) {
-          const data = JSON.parse(rawData);
-          const reservationMap = getReservationMap();
-          formatMatingSheet(ss, data, reservationMap);
-          formatBreedingSheet(ss, data, reservationMap);
-          return ContentService.createTextOutput("Sync Success");
-      }
-      return ContentService.createTextOutput("Empty DB");
-    }
-  } catch (err) {
-    return ContentService.createTextOutput("Error: " + err.toString());
-  }
+  return ContentService.createTextOutput("PING SUCCESS");
 }
 
 function doPost(e) {
@@ -77,13 +29,11 @@ function doPost(e) {
       // Strain Map 시트 포맷팅 및 업데이트
       updateStrainMapSheet(ss, data);
 
-      const reservationMap = getReservationMap();
-
       // Mating 시트 포맷팅 (노란색 케이지)
-      formatMatingSheet(ss, data, reservationMap);
+      formatMatingSheet(ss, data);
 
       // Breeding 시트 포맷팅 (흰색 케이지)
-      formatBreedingSheet(ss, data, reservationMap);
+      formatBreedingSheet(ss, data);
       
       // 로그 시트 포맷팅
       formatLogSheet(ss, data);
@@ -95,6 +45,20 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doGet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const dbSheet = ss.getSheetByName('DB');
+  if (dbSheet) {
+    const rawData = dbSheet.getRange('A1').getValue();
+    if (rawData) {
+      return ContentService.createTextOutput(rawData)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+  return ContentService.createTextOutput(JSON.stringify({ cages: [], logs: [] }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -421,8 +385,7 @@ function formatMatingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const matingWidths = [100, 76, 52, 137, 34, 44, 34, 44, 87, 168];
-  matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
+  sheet.autoResizeColumns(2, 9);
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
@@ -634,8 +597,7 @@ function formatBreedingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168, 82];
-  breedingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
+  sheet.autoResizeColumns(2, 8);
 
   sheet.getRange(1, 3, 2, 7).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
@@ -646,18 +608,10 @@ function formatBreedingSheet(ss, data, reservationMap) {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🐭 Animal Room')
-      .addItem('🔄 시트 새로고침', 'syncFromSheetButton')
+      .addItem('🔄 시트 새로고침 (매칭표 적용)', 'syncFromSheetButton')
       .addToUi();
 }
 
-function authorizeWebhook() {
-  try {
-    UrlFetchApp.fetch('https://google.com');
-    SpreadsheetApp.getUi().alert('✅ 백그라운드 동기화 권한 허용이 완료되었습니다!\\n이제 기자재예약 시트에서 글을 쓰면 자동으로 연동됩니다.');
-  } catch (e) {
-    SpreadsheetApp.getUi().alert('권한이 이미 허용되었거나 오류가 발생했습니다.');
-  }
-}
 
 function syncFromSheetButton() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

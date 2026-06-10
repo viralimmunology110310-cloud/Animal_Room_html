@@ -1,0 +1,19 @@
+Found 18 deployments.
+- AKfycbyc9fHVjdcIWQIC6Lbous8Hcrvqy9E1uWr6kAX4coE @HEAD 
+- AKfycbyD4B-z77OzqlbBPc0o3JClKBR4OwmUUoU15kWzhTOWVnmt0jhrYfgph8IBHtQOA9eF @38 - Emergency Restore
+- AKfycbzjjzE7n9VkDzLtlJqpXY_5_8p3Jj6j7f5vXOAM3bC9_Yza207EvoZD0fu1M-o1Qk0u @34 - Wrap text, D.O.W to D.O.M (v2.7.10)
+- AKfycbyirwmFDrlEYyENvi1MIKZBNkU6ia1DXMdQf0ao5BFMW9VKj1XtnLpK4U_sOlWUPetm @29 - Fix getCageDay for WT cages
+- AKfycbxeV4stu6Ivn5SjrQbGGT12FN9KyQxMVcI1M0R0AikTHATPYm5NqsISHpN5RG7LGPxo @25 - Auto deploy - sort fix
+- AKfycbyAK1Yt9caoXyron3vA6CZuIBkKpNEIhOi_RjEu80lBGuejJKB2BUVBg26xAfXrcptM @28 - Fix getCageDay for string dayMap structure and update sorting
+- AKfycbzSla6OYvvhvafu2nA3tV-7Fb6IJ0eL3BPB-MnN4VX0577HVZ1w9DO2iCBWKzEUi876 @36 - Update baby color logic to 7 days (v2.7.12)
+- AKfycbyimQ8g0Za8TG1EqjxS6igrtCjtg3P8_pdnWS9jHoeCucrtd5hHHgl3fXxVY3WQ2GZf @35 - Fix baby logic and touch support (v2.7.11)
+- AKfycbyGSpYelxpBt6HVka46JjNky9aZCzDka-Zc50lf99FfXadJ8X_GWE_NF6PFHM8HYG3k @27 - Fix strainMap sync - Firebase is master
+- AKfycbzSQSRePueoW6OuZ80e0DsnzF9tk2XIKA7YlQbGw4Q85PCYDRuwwrsZ3Fq8DhoX0pZs @39 - Fix 50k char limit
+- AKfycbx61eAKtusJUTl-AvZBuuEV_wetOw0izalnuZhT_tOrRVCKm5sQURaMdEbvj3o_t-U @26 - Add formatLogSheet
+- AKfycbyWg0qO0t15IobSTjwB5mxxEASibosDcdb31u7aZwotX_gVSbX3my31D1g8x8uh94N7 @24 
+- AKfycbywuivhc4kBn4hLa3S3ynKvHVu2XWLj-iX1yGOh3I6BTyLZ1Wi5cRha9hCdwOFuf4Bt @40 - Fix formatting
+- AKfycbzLkCpTPHVb6bGVE7wE564rYT2GS0eu8G7rTE0kqgi-qOCHJ2_vYKuoVdBzShfuxQ7k @31 - Weekly append, 12pt, date format, Baby coloring, G완/G전 swap
+- AKfycbz2sIaTLtxCsaHG43jdbKti2HrUz9794LXQU3KIpEdLvT-No_iCnfl5IhF_5oU84zRw @30 - Revert WT to G for getCageDay
+- AKfycbwkPCjjlKjAA23yQYZcSBylbbGHBqdLexskyHi1O26usOqa2URGM-ZHna9gZ_ml54o5 @33 - Fix C.no to strainCNo in Breeding, add snapshot UI, update version v2.7.9
+- AKfycbyPMS9YjP_lYe7eB4YAQK91NkPwlbg6ITMLnmo5UPLhXoKoDzdXtlrSrxmY_Izvsj0 @32 - Fix Mating count, subId, and UI bugs
+- AKfycbz0VhPwDY8CGuxA4D9unK3bOxTuryx0Wpq5M2MFJRNfMvVphTqdFmS2Vz2el8PvIwKC @37 - Fix title sync and hide date (v2.7.13)
