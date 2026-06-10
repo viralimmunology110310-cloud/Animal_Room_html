@@ -2452,7 +2452,8 @@ document.addEventListener('pointerdown', (e) => {
         if (!code)               { el.innerText = 'Genotype: 기호를 입력하세요'; el.style.color = 'var(--text-sub)'; }
         else if (STRAIN_MAP[code]) { 
             const sm = STRAIN_MAP[code];
-            el.innerText = `Genotype: ${sm.name}`;    
+            const gDoneText = sm.g_done ? '(G완)' : '';
+            el.innerText = `Genotype: ${sm.name}${gDoneText}`;    
             el.style.color = '#34c759'; 
         }
         else                      { el.innerText = 'Genotype: 매칭 안됨 (매칭표 확인)'; el.style.color = '#FF375F'; }
