@@ -429,7 +429,7 @@ function formatMatingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const matingWidths = [100, 76, 52, 137, 34, 44, 34, 44, 87];
+  const matingWidths = [100, 76, 52, 137, 43, 44, 87, 87, 87];
   matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);

@@ -2255,7 +2255,7 @@ document.addEventListener('pointerdown', (e) => {
                     const label = day === 'Mon' ? '월' : day === 'Tue' ? '화' : '수';
                     dayBadgeHtml = `<div class="day-badge ${day}">${label}</div>`;
                 }
-                const noteHtml = cage.notes ? `<div style="position:absolute; top:0; left:0; width:0; height:0; border-top:18px solid #FF3B30; border-right:18px solid transparent; border-top-left-radius:20px; pointer-events:none;"></div>` : '';
+                const noteHtml = cage.notes ? `<div style="position:absolute; top:8px; right:8px; width:8px; height:8px; background-color:#FF3B30; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.3); pointer-events:none;"></div>` : '';
                 
                 contentHtml = dayBadgeHtml + contentHtml + noteHtml;
             }
