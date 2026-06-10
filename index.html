@@ -2012,12 +2012,18 @@ document.addEventListener('pointerdown', (e) => {
             if (day === 'Wed') return '#d9d2e9';
             return '#ffffff';
         }
-        function formatGeno(count, geno) {
+        function formatGeno(count, geno, strain) {
             if (!count || count === '0') return '';
-            let g = String(geno || '').toLowerCase();
+            let gRaw = String(geno || '').trim();
+            let g = gRaw.toLowerCase();
             if (g.includes('het')) return `${count}(Het)`;
             if (g.includes('homo')) return `${count}(homo)`;
             if (g.includes('wt')) return `${count}(WT)`;
+            if (strain && strain.includes('*') && gRaw) {
+                let cleaned = gRaw.replace(/\bko\b/i, '').trim();
+                if (cleaned) return `${count}(${cleaned})`;
+                return `${count}(KO)`;
+            }
             return `${count}`;
         }
         function isSameWeek(t1, t2) {
@@ -2111,8 +2117,11 @@ document.addEventListener('pointerdown', (e) => {
             const isGDone = STRAIN_MAP[c.code] && STRAIN_MAP[c.code].g_done;
             const displayCode = isGDone ? `${c.code || ''}(G완)` : (c.code || '');
             
-            const mTxt = formatGeno(c.mMale, c.mGeno);
-            const fTxt = formatGeno(c.mFemale, c.fGeno);
+            let strainName = c.code;
+            if (STRAIN_MAP[c.code] && STRAIN_MAP[c.code].name) strainName = STRAIN_MAP[c.code].name;
+            
+            const mTxt = formatGeno(c.mMale, c.mGeno, strainName);
+            const fTxt = formatGeno(c.mFemale, c.fGeno, strainName);
             
             let mD = c.mDob ? new Date(c.mDob) : new Date(0);
             let fD = c.fDob ? new Date(c.fDob) : new Date(0);

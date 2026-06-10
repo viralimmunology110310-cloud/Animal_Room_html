@@ -358,14 +358,14 @@ function formatMatingSheet(ss, data, reservationMap) {
       }
     }
 
-    const formatGeno = (count, geno) => {
+    const formatGeno = (count, geno, strain) => {
       if (!count || count === '0') return '';
       let gRaw = String(geno || '').trim();
       let g = gRaw.toLowerCase();
       if (g.includes('het')) return `${count}(Het)`;
       if (g.includes('homo')) return `${count}(homo)`;
       if (g.includes('wt')) return `${count}(WT)`;
-      if (gRaw) {
+      if (strain && strain.includes('*') && gRaw) {
         let cleaned = gRaw.replace(/\bko\b/i, '').trim();
         if (cleaned) return `${count}(${cleaned})`;
         return `${count}(KO)`;
@@ -373,8 +373,8 @@ function formatMatingSheet(ss, data, reservationMap) {
       return `${count}`;
     };
 
-    let mNum = formatGeno(c.mMale, c.mGeno);
-    let fNum = formatGeno(c.mFemale, c.fGeno);
+    let mNum = formatGeno(c.mMale, c.mGeno, strainName);
+    let fNum = formatGeno(c.mFemale, c.fGeno, strainName);
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
     rowData[1] = globalNo++;
