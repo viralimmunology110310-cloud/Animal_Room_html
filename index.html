@@ -742,13 +742,11 @@
                     <option value="experiment">실험/이동용 (보라색)</option>
                 </select>
             </div>
-            <div class="form-group" style="flex:0.6;">
-                <label>알파벳 기호</label>
-                <input type="text" id="m-code" class="form-control" placeholder="A, C" oninput="updateGenotypeDisplay()" maxlength="4">
-            </div>
-            <div class="form-group" style="flex:0.6;">
-                <label>케이지 번호</label>
-                <input type="text" id="m-sub" class="form-control" placeholder="52">
+            <div class="form-group" style="flex:1.2;">
+                <label>케이지 번호 (알파벳+숫자)</label>
+                <input type="text" id="m-fullcode" class="form-control" placeholder="예: B12" oninput="handleFullCodeInput(); updateGenotypeDisplay()" autocomplete="off">
+                <input type="hidden" id="m-code">
+                <input type="hidden" id="m-sub">
             </div>
         </div>
 
@@ -2249,9 +2247,7 @@ document.addEventListener('pointerdown', (e) => {
                                <div style="font-size:10px; color:#fff; margin-top:4px; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${cage.notes || ''}</div>
                                </div>`;
             } else {
-                contentHtml = cage.type === 'mating'
-                    ? `<span class="strain-code" style="font-size:24px;letter-spacing:-1px;">${cage.code}${displaySub}</span>`
-                    : `<span class="strain-code">${cage.code}</span>` + (displaySub ? `<span class="sub-id">${displaySub}</span>` : '');
+                contentHtml = `<span class="strain-code" style="font-size:24px;letter-spacing:-1px;">${cage.code}${displaySub}</span>`;
 
                 let dayBadgeHtml = '';
                 const day = getCageDay(cage);
@@ -2259,7 +2255,7 @@ document.addEventListener('pointerdown', (e) => {
                     const label = day === 'Mon' ? '월' : day === 'Tue' ? '화' : '수';
                     dayBadgeHtml = `<div class="day-badge ${day}">${label}</div>`;
                 }
-                const noteHtml = cage.notes ? `<div style="position:absolute; bottom:6px; font-size:16px; pointer-events:none;">${(cage.notes.includes('G완')||cage.notes.includes('G전')) ? '⭐' : '📝'}</div>` : '';
+                const noteHtml = cage.notes ? `<div style="position:absolute; bottom:6px; font-size:16px; pointer-events:none;">📝</div>` : '';
                 
                 contentHtml = dayBadgeHtml + contentHtml + noteHtml;
             }
@@ -2438,6 +2434,16 @@ document.addEventListener('pointerdown', (e) => {
         document.getElementById(inputId).value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     }
 
+    window.handleFullCodeInput = function() {
+        const full = document.getElementById('m-fullcode').value.toUpperCase().trim();
+        // Extract letters (A-Z) and numbers (0-9)
+        const codeMatch = full.match(/^[A-Z]+/);
+        const subMatch = full.match(/\d+$/);
+        
+        document.getElementById('m-code').value = codeMatch ? codeMatch[0] : '';
+        document.getElementById('m-sub').value = subMatch ? subMatch[0] : '';
+    };
+
     function updateGenotypeDisplay() {
         const code = document.getElementById('m-code').value.toUpperCase();
         const el   = document.getElementById('genotype-display');
@@ -2458,8 +2464,9 @@ document.addEventListener('pointerdown', (e) => {
             const c = cages.find(x => x.id === cageId);
             document.getElementById('m-id').value = c.id;
             document.getElementById('m-type').value = c.type;
-            document.getElementById('m-code').value = c.code;
-            document.getElementById('m-sub').value = c.subId;
+            document.getElementById('m-code').value = c.code || '';
+            document.getElementById('m-sub').value = c.subId || '';
+            document.getElementById('m-fullcode').value = (c.code || '') + (c.subId || '');
             document.getElementById('m-notes').value = c.notes || '';
             
             // Reset chips
@@ -2523,6 +2530,7 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-type').value = 'breeding';
             document.getElementById('m-code').value = '';
             document.getElementById('m-sub').value = '';
+            document.getElementById('m-fullcode').value = '';
             document.getElementById('m-notes').value = '';
             document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
             document.getElementById('gdone-sub').classList.remove('show');
@@ -2551,8 +2559,7 @@ document.addEventListener('pointerdown', (e) => {
         document.getElementById('mating-fields').style.display  = type === 'mating'   ? 'block' : 'none';
         
         const isSentinel = (type === 'sentinel');
-        document.getElementById('m-code').parentElement.style.display = isSentinel ? 'none' : 'block';
-        document.getElementById('m-sub').parentElement.style.display = isSentinel ? 'none' : 'block';
+        document.getElementById('m-fullcode').parentElement.style.display = isSentinel ? 'none' : 'block';
         document.getElementById('genotype-display').style.display = isSentinel ? 'none' : 'block';
     }
 
