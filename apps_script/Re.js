@@ -444,7 +444,7 @@ function formatMatingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const matingWidths = [100, 76, 52, 137, 43, 44, 87, 87, 87];
+  const matingWidths = [100, 76, 52, 137, 67, 67, 87, 87, 87];
   matingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
@@ -621,7 +621,8 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
   if (output.length > 0) {
     sheet.getRange(startRow, 2, output.length, 15).setValues(output).setHorizontalAlignment('center').setFontSize(12);
-    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('center');
+    sheet.getRange(startRow, 9, output.length, 1).setRichTextValues(richTexts).setHorizontalAlignment('left');
+    sheet.getRange(startRow, 10, output.length, 1).setHorizontalAlignment('left');
     sheet.getRange(startRow, 2, output.length, 1).setBackgrounds(bColors);
 
     blocks.forEach(b => {
