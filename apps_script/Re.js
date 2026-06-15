@@ -665,12 +665,11 @@ function formatBreedingSheet(ss, data, reservationMap) {
     sheet.getRange(startRow, 3, output.length, 1).setBorder(true, null, true, null, null, false, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   }
 
-  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 168, 120];
+  const breedingWidths = [100, 76, 47, 122, 34, 44, 87, 89, 120];
   breedingWidths.forEach((w, i) => sheet.setColumnWidth(2 + i, w));
 
   sheet.getRange(1, 3, 2, 8).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   sheet.hideColumns(16);
-  sheet.autoResizeColumn(9);
   sheet.autoResizeColumn(10);
 }
 
