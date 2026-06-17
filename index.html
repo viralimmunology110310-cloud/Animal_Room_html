@@ -816,6 +816,12 @@
                 </div>
                 <label class="chip-toggle"><input type="checkbox" id="b-gpre"> <span>G전</span></label>
             </div>
+            <div class="chip-row" style="margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+                <span style="font-size:12px; color:#a1a1a6; font-weight:bold; margin-right:4px;">상태 표시:</span>
+                <label class="chip-toggle"><input type="radio" name="cageStatus" value="normal" id="c-status-normal"> <span>기본</span></label>
+                <label class="chip-toggle"><input type="radio" name="cageStatus" value="sac" id="c-status-sac"> <span>Sac 예정</span></label>
+                <label class="chip-toggle"><input type="radio" name="cageStatus" value="transfer" id="c-status-transfer"> <span>반출 예정</span></label>
+            </div>
             <div class="form-row">
                 <div class="form-group" style="flex:1;">
                     <label>성별</label>
@@ -2274,11 +2280,15 @@ document.addEventListener('pointerdown', (e) => {
                 contentHtml = dayBadgeHtml + contentHtml + noteHtml;
             }
 
+            let statusClass = '';
+            if (cage.status === 'sac') statusClass = ' status-sac';
+            else if (cage.status === 'transfer') statusClass = ' status-transfer';
+
             if (!el) {
-                el = document.createElement('div'); el.id = cage.id; el.className = `cage ${cage.type}`;
+                el = document.createElement('div'); el.id = cage.id; el.className = `cage ${cage.type}${statusClass}`;
                 el.innerHTML = contentHtml; setupDragEngine(el, cage.id); grid.appendChild(el);
             } else {
-                el.className = `cage ${cage.type}`; el.innerHTML = contentHtml;
+                el.className = `cage ${cage.type}${statusClass}`; el.innerHTML = contentHtml;
             }
 
             if (selectedIds.has(cage.id)) el.classList.add('selected'); else el.classList.remove('selected');
@@ -2416,8 +2426,15 @@ document.addEventListener('pointerdown', (e) => {
                             label.classList.add('active-pregnant');
                         }
                     } else {
-                        label.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant');
+                        label.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant', 'active-sac', 'active-transfer');
                         if(this.id === 'b-gdone') document.getElementById('gdone-sub').classList.remove('show');
+                    }
+                    
+                    if(this.name === 'cageStatus' && this.checked) {
+                        label.classList.remove('active', 'active-sac', 'active-transfer');
+                        if(this.value === 'sac') label.classList.add('active-sac');
+                        else if(this.value === 'transfer') label.classList.add('active-transfer');
+                        else label.classList.add('active');
                     }
                 }
                 
@@ -2494,6 +2511,19 @@ document.addEventListener('pointerdown', (e) => {
                 document.getElementById('m-pregnant').parentElement.classList.add('active-pregnant');
             }
             
+            // Parse Status
+            document.getElementById('c-status-normal').checked = true;
+            document.querySelectorAll('input[name="cageStatus"]').forEach(r => r.parentElement.classList.remove('active', 'active-sac', 'active-transfer'));
+            if (c.status === 'sac') {
+                document.getElementById('c-status-sac').checked = true;
+                document.getElementById('c-status-sac').parentElement.classList.add('active-sac');
+            } else if (c.status === 'transfer') {
+                document.getElementById('c-status-transfer').checked = true;
+                document.getElementById('c-status-transfer').parentElement.classList.add('active-transfer');
+            } else {
+                document.getElementById('c-status-normal').parentElement.classList.add('active');
+            }
+
             // Parse G완/G전 from notes
             if (c.notes) {
                 const gdoneMatch = c.notes.match(/G완(?:\(([^)]+)\))?/);
@@ -2547,8 +2577,10 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-sub').value = '';
             document.getElementById('m-fullcode').value = '';
             document.getElementById('m-notes').value = '';
-            document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant'); });
+            document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant', 'active-sac', 'active-transfer'); });
             document.getElementById('gdone-sub').classList.remove('show');
+            document.getElementById('c-status-normal').checked = true;
+            document.getElementById('c-status-normal').parentElement.classList.add('active');
             document.getElementById('m-dom').value = '';
             document.getElementById('m-male-count').value = '';
             document.getElementById('m-male-geno').value = '';
@@ -2589,6 +2621,7 @@ document.addEventListener('pointerdown', (e) => {
             code: document.getElementById('m-code').value.toUpperCase(),
             subId: document.getElementById('m-sub').value,
             notes: document.getElementById('m-notes').value,
+            status: (document.querySelector('input[name="cageStatus"]:checked') || {}).value || 'normal',
             dom: document.getElementById('m-dom').value,
             mMale: parseInt(document.getElementById('m-male-count').value) || 0,
             mGeno: document.getElementById('m-male-geno').value,
