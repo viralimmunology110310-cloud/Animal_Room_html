@@ -448,6 +448,7 @@
         .chip-toggle.active-red { background: rgba(255,55,95,0.15); border-color: rgba(255,55,95,0.5); color: #FF375F; }
         .chip-toggle.active-blue { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.5); color: #0a84ff; }
         .chip-toggle.active-pregnant { background: rgba(255,159,10,0.15); border-color: rgba(255,159,10,0.5); color: #ff9f0a; }
+        .chip-toggle.active-sac-transfer { background: rgba(0,240,255,0.15); border-color: rgba(0,240,255,0.8); color: #00f0ff; text-shadow: 0 0 5px rgba(0,240,255,0.5); }
         .chip-sub-row {
             display: flex; gap: 6px; align-items: center;
             background: rgba(255,255,255,0.03);
@@ -2287,7 +2288,7 @@ document.addEventListener('pointerdown', (e) => {
             let extraStyles = '';
             // Handle legacy sac/transfer values as well
             if (cage.status === 'sac_transfer' || cage.status === 'sac' || cage.status === 'transfer') {
-                extraStyles = 'border: 3px dashed #3b82f6 !important; box-shadow: inset 0 0 10px rgba(59,130,246,0.3) !important; box-sizing: border-box;';
+                extraStyles = 'border: 3px solid #00f0ff !important; box-shadow: inset 0 0 15px rgba(0,240,255,0.5), 0 0 15px rgba(0,240,255,0.8) !important; box-sizing: border-box;';
             }
 
             if (!el) {
