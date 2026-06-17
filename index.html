@@ -1260,7 +1260,10 @@
         });
     }
 
+    let snapshotCheckedToday = false;
     function checkAndSaveSnapshot(data) {
+        if (snapshotCheckedToday) return;
+        snapshotCheckedToday = true;
         const d = new Date();
         const todayStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         fbDb.ref('snapshots/lastDate').once('value').then(snap => {
@@ -1268,7 +1271,7 @@
                 let updates = {};
                 updates['snapshots/lastDate'] = todayStr;
                 updates['snapshots/' + todayStr] = data;
-                fbDb.update(updates).then(() => {
+                fbDb.ref().update(updates).then(() => {
                     console.log('Daily snapshot saved:', todayStr);
                     // 2주 지난 스냅샷 자동 삭제
                     fbDb.ref('snapshots').once('value').then(allSnaps => {
@@ -1282,7 +1285,7 @@
                             }
                         });
                     });
-                });
+                }).catch(err => console.error("Snapshot save failed:", err));
             }
         });
     }
