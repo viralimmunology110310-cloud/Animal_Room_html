@@ -808,8 +808,7 @@
             <div class="form-group" style="flex:1.2;">
                 <label>케이지 상태 (Sac/반출)</label>
                 <div class="chip-row" style="margin-bottom: 10px;">
-                    <label class="chip-toggle"><input type="radio" name="cageStatus" value="normal" id="c-status-normal" checked> <span>기본</span></label>
-                    <label class="chip-toggle"><input type="radio" name="cageStatus" value="sac_transfer" id="c-status-sac-transfer"> <span>Sac/반출 예정</span></label>
+                    <label class="chip-toggle"><input type="checkbox" id="c-status-sac-transfer"> <span>Sac/반출 예정</span></label>
                 </div>
             </div>
         </div>
@@ -2440,19 +2439,14 @@ document.addEventListener('pointerdown', (e) => {
                             document.getElementById('gdone-sub').classList.remove('show');
                         } else if(this.id === 'm-pregnant') {
                             label.classList.add('active-pregnant');
+                        } else if(this.id === 'c-status-sac-transfer') {
+                            label.classList.add('active-sac-transfer');
                         }
                     } else {
                         label.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant', 'active-sac-transfer');
                         if(this.id === 'b-gdone') document.getElementById('gdone-sub').classList.remove('show');
                     }
-                    
-                    if(this.name === 'cageStatus' && this.checked) {
-                        label.classList.remove('active', 'active-sac-transfer');
-                        if(this.value === 'sac_transfer') label.classList.add('active-sac-transfer');
-                        else label.classList.add('active');
-                    }
                 }
-                
                 // Live update Notes
                 let noteVal = document.getElementById('m-notes').value;
                 if (document.getElementById('breeding-fields').style.display !== 'none') {
@@ -2527,13 +2521,11 @@ document.addEventListener('pointerdown', (e) => {
             }
             
             // Parse Status
-            document.getElementById('c-status-normal').checked = true;
-            document.querySelectorAll('input[name="cageStatus"]').forEach(r => r.parentElement.classList.remove('active', 'active-sac-transfer'));
+            document.getElementById('c-status-sac-transfer').checked = false;
+            document.getElementById('c-status-sac-transfer').parentElement.classList.remove('active', 'active-sac-transfer');
             if (c.status === 'sac_transfer' || c.status === 'sac' || c.status === 'transfer') {
                 document.getElementById('c-status-sac-transfer').checked = true;
                 document.getElementById('c-status-sac-transfer').parentElement.classList.add('active-sac-transfer');
-            } else {
-                document.getElementById('c-status-normal').parentElement.classList.add('active');
             }
 
             // Parse G완/G전 from notes
@@ -2591,8 +2583,6 @@ document.addEventListener('pointerdown', (e) => {
             document.getElementById('m-notes').value = '';
             document.querySelectorAll('.chip-toggle input').forEach(el => { el.checked = false; el.parentElement.classList.remove('active', 'active-red', 'active-blue', 'active-pregnant', 'active-sac-transfer'); });
             document.getElementById('gdone-sub').classList.remove('show');
-            document.getElementById('c-status-normal').checked = true;
-            document.getElementById('c-status-normal').parentElement.classList.add('active');
             document.getElementById('m-dom').value = '';
             document.getElementById('m-male-count').value = '';
             document.getElementById('m-male-geno').value = '';
@@ -2633,7 +2623,7 @@ document.addEventListener('pointerdown', (e) => {
             code: document.getElementById('m-code').value.toUpperCase(),
             subId: document.getElementById('m-sub').value,
             notes: document.getElementById('m-notes').value,
-            status: (document.querySelector('input[name="cageStatus"]:checked') || {}).value || 'normal',
+            status: document.getElementById('c-status-sac-transfer').checked ? 'sac_transfer' : 'normal',
             dom: document.getElementById('m-dom').value,
             mMale: parseInt(document.getElementById('m-male-count').value) || 0,
             mGeno: document.getElementById('m-male-geno').value,
