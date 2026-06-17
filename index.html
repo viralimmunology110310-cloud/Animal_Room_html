@@ -2809,6 +2809,52 @@ document.addEventListener('pointerdown', (e) => {
 
     let isDataLoaded = false;
     let _fbSaving = false; // Firebase 저장 중 플래그 (리스너 루프 방지)
+    let backupChecked = false;
+
+    async function checkAndRunDailyBackup(currentDbData) {
+        try {
+            const today = new Date();
+            const kstOffset = 9 * 60 * 60 * 1000;
+            const kstTime = new Date(today.getTime() + (today.getTimezoneOffset() * 60000) + kstOffset);
+            
+            const yyyy = kstTime.getFullYear();
+            const mm = String(kstTime.getMonth() + 1).padStart(2, '0');
+            const dd = String(kstTime.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+            
+            const metaRes = await fetch("https://small-animal-room-default-rtdb.firebaseio.com/backupMeta/lastBackupDate.json");
+            const lastBackupDate = await metaRes.json();
+            
+            if (lastBackupDate === dateStr) return;
+            
+            console.log("Running daily backup for:", dateStr);
+            await fetch(`https://small-animal-room-default-rtdb.firebaseio.com/backups/${dateStr}.json`, {
+                method: 'PUT',
+                body: JSON.stringify(currentDbData)
+            });
+            await fetch(`https://small-animal-room-default-rtdb.firebaseio.com/backupMeta/lastBackupDate.json`, {
+                method: 'PUT',
+                body: JSON.stringify(dateStr)
+            });
+            
+            const backupsRes = await fetch("https://small-animal-room-default-rtdb.firebaseio.com/backups.json?shallow=true");
+            const backups = await backupsRes.json();
+            if (backups) {
+                const cutoffDate = new Date(kstTime.getTime() - (14 * 24 * 60 * 60 * 1000));
+                cutoffDate.setHours(0, 0, 0, 0);
+                for (let key in backups) {
+                    const parts = key.split('-');
+                    if (parts.length === 3) {
+                        const backupDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                        if (backupDate < cutoffDate) {
+                            console.log("Deleting old backup:", key);
+                            fetch(`https://small-animal-room-default-rtdb.firebaseio.com/backups/${key}.json`, { method: 'DELETE' });
+                        }
+                    }
+                }
+            }
+        } catch (e) { console.error("Daily backup failed:", e); }
+    }
 
     // ── Firebase에 데이터 저장 (내가 수정할 때마다) ────
     let saveTimeout = null;
@@ -2857,6 +2903,11 @@ document.addEventListener('pointerdown', (e) => {
         document.getElementById('connection-status').style.color = '#4ade80';
 
         const data = snapshot.val();
+        
+        if (!backupChecked && data) {
+            backupChecked = true;
+            checkAndRunDailyBackup(data);
+        }
         if (!data) {
             // Firebase가 비어있으면 → 기존 구글 시트에서 1회 마이그레이션
             if (!isDataLoaded) {
