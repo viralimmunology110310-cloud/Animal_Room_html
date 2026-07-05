@@ -603,8 +603,8 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
-    rowData[1] = c.isDummy ? '' : globalNo++;
-    rowData[2] = c.isDummy ? '' : strainCNo;
+    rowData[1] = globalNo++;
+    rowData[2] = strainCNo;
     rowData[3] = strainName;
     rowData[4] = c.isDummy ? '' : sex;
     rowData[5] = c.isDummy ? '' : c.bCount;
