@@ -516,6 +516,27 @@ function formatBreedingSheet(ss, data, reservationMap) {
   sheet.getRange(startRow, 26).setValue(weekMarker);
 
   const breedingCages = data.cages.filter(c => c.type === 'breeding' || c.type === 'empty');
+  
+  // 구글 시트에서 strain map에는 있는데 실제로 인벤토리에서는 없는 경우 더미 추가
+  if (data.strainMap) {
+    const existingStrains = {};
+    breedingCages.forEach(c => { existingStrains[c.code] = true; });
+    Object.keys(data.strainMap).forEach(code => {
+      if (!existingStrains[code]) {
+        breedingCages.push({
+          isDummy: true,
+          type: 'breeding',
+          code: code,
+          subId: '',
+          bCount: 0,
+          notes: '',
+          gender: '',
+          bDob: ''
+        });
+      }
+    });
+  }
+
   breedingCages.sort((a, b) => {
     let aCode = a.code || '';
     let bCode = b.code || '';
@@ -582,12 +603,12 @@ function formatBreedingSheet(ss, data, reservationMap) {
 
     let rowData = new Array(15).fill('');
     rowData[0] = bCol;
-    rowData[1] = globalNo++;
-    rowData[2] = strainCNo;
+    rowData[1] = c.isDummy ? '' : globalNo++;
+    rowData[2] = c.isDummy ? '' : strainCNo;
     rowData[3] = strainName;
-    rowData[4] = sex;
-    rowData[5] = c.bCount;
-    rowData[6] = formatDateDots(c.bDob);
+    rowData[4] = c.isDummy ? '' : sex;
+    rowData[5] = c.isDummy ? '' : c.bCount;
+    rowData[6] = c.isDummy ? '' : formatDateDots(c.bDob);
     let note = c.notes || '';
     const parseDob = (raw) => {
       if (!raw) return '';
@@ -603,9 +624,9 @@ function formatBreedingSheet(ss, data, reservationMap) {
        resv = reservationMap[codeUp + '_' + sexChar + '_' + (c.bCount||0) + '_'];
     }
     rowData[7] = note;
-    rowData[8] = resv || '';
-    rowData[9] = isGDone ? '' : `${c.code}${c.subId}`;
-    rowData[14] = c.id; 
+    rowData[8] = c.isDummy ? '' : (resv || '');
+    rowData[9] = c.isDummy ? '' : (isGDone ? '' : `${c.code}${c.subId}`);
+    rowData[14] = c.id || ''; 
     output.push(rowData);
 
     let day = getCageDay(c, data.dayMap, data.wtRanges);
