@@ -746,9 +746,9 @@ function syncFromSheetButton() {
       const smData = smSheet.getRange(2, 1, lastRow - 1, 3).getValues();
       const newStrainMap = {};
       smData.forEach(row => {
-        if (row[0] && row[1]) {
+        if (row[0]) {
           const g_done = String(row[2]).trim().toUpperCase() === 'O';
-          newStrainMap[String(row[0]).trim()] = { name: String(row[1]).trim(), g_done };
+          newStrainMap[String(row[0]).trim()] = { name: row[1] ? String(row[1]).trim() : '', g_done };
         }
       });
       if (Object.keys(newStrainMap).length > 0) {
