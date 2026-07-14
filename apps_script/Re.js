@@ -309,8 +309,19 @@ function formatMatingSheet(ss, data, reservationMap) {
   matingCages.sort((a, b) => {
     let aCode = a.code || '';
     let bCode = b.code || '';
-    if (aCode.length !== bCode.length) return aCode.length - bCode.length;
-    if (aCode !== bCode) return aCode.localeCompare(bCode);
+    // 웹사이트 오른쪽 패널과 동일한 알파벳+숫자 분리 정렬
+    let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
+    let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
+    if (!aMatch || !bMatch) {
+      if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+      if (aCode !== bCode) return aCode.localeCompare(bCode);
+    } else {
+      let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
+      if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
+      if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
+      let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
+      if (aNum !== bNum) return aNum - bNum;
+    }
     
     let aSub = parseInt(a.subId) || 0;
     let bSub = parseInt(b.subId) || 0;
@@ -540,8 +551,19 @@ function formatBreedingSheet(ss, data, reservationMap) {
   breedingCages.sort((a, b) => {
     let aCode = a.code || '';
     let bCode = b.code || '';
-    if (aCode.length !== bCode.length) return aCode.length - bCode.length;
-    if (aCode !== bCode) return aCode.localeCompare(bCode);
+    // 웹사이트 오른쪽 패널과 동일한 알파벳+숫자 분리 정렬
+    let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
+    let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
+    if (!aMatch || !bMatch) {
+      if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+      if (aCode !== bCode) return aCode.localeCompare(bCode);
+    } else {
+      let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
+      if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
+      if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
+      let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
+      if (aNum !== bNum) return aNum - bNum;
+    }
     
     let aSub = parseInt(a.subId) || 0;
     let bSub = parseInt(b.subId) || 0;
@@ -752,12 +774,23 @@ function syncFromSheetButton() {
         }
       });
       if (Object.keys(newStrainMap).length > 0) {
-        data.strainMap = newStrainMap; // 새로 읽어온 맵으로 덮어쓰기
-        // 시트도 다시 정렬해서 덮어씁니다.
+        // DB의 기존 strainMap 키를 보존하면서 시트 데이터를 merge (0개 strain 유실 방지)
+        const mergedMap = {};
+        if (data.strainMap) {
+          Object.keys(data.strainMap).forEach(k => {
+            const val = data.strainMap[k];
+            if (typeof val === 'string') mergedMap[k] = { name: val, g_done: false };
+            else mergedMap[k] = { name: val.name || '', g_done: !!val.g_done };
+          });
+        }
+        // 시트에서 읽은 값으로 덮어쓰기 (시트에 있는 건 시트 값 우선)
+        Object.keys(newStrainMap).forEach(k => { mergedMap[k] = newStrainMap[k]; });
+        data.strainMap = mergedMap;
+        // 시트도 merge 결과로 다시 정렬해서 덮어씁니다.
         smSheet.clear();
         smSheet.getRange('A1:C1').setValues([['기호(알파벳)', 'Strain 이름', 'G완료 여부(O/X)']]).setFontWeight('bold').setBackground('#f3f3f3');
-        const sortedKeys = sortStrainKeys(Object.keys(newStrainMap));
-        const smRows = sortedKeys.map(k => [k, newStrainMap[k].name, newStrainMap[k].g_done ? 'O' : 'X']);
+        const sortedKeys = sortStrainKeys(Object.keys(mergedMap));
+        const smRows = sortedKeys.map(k => [k, mergedMap[k].name, mergedMap[k].g_done ? 'O' : 'X']);
         if (smRows.length > 0) smSheet.getRange(2, 1, smRows.length, 3).setValues(smRows);
       }
     }
