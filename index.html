@@ -2094,17 +2094,8 @@ document.addEventListener('pointerdown', (e) => {
 
         const sortFn = (a, b) => {
             let aCode = a.code || ''; let bCode = b.code || '';
-            let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
-            let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
-            if (!aMatch || !bMatch) {
-                if (aCode.length !== bCode.length) return aCode.length - bCode.length;
-                return aCode.localeCompare(bCode);
-            }
-            let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
-            if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
-            if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
-            let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
-            if (aNum !== bNum) return aNum - bNum;
+            if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+            if (aCode !== bCode) return aCode.localeCompare(bCode);
             return (parseInt(a.subId)||0) - (parseInt(b.subId)||0);
         };
         matingCages.sort(sortFn);
@@ -2843,7 +2834,7 @@ document.addEventListener('pointerdown', (e) => {
     const fbDataRef = fbDb.ref('animalRoom');
 
     // ── Google Apps Script (구글 시트 포매팅 전용) ────
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbye8aWCFivuzoTv2UFhbcZMsO2yDRPi0oHRnkDHx-lzybJhZX7vQ-YQr6ced8FBgdU7/exec'; 
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz-pKmhr16qlJn7V4eZSW4gr8e1uqhAVgMauu8fN82uXj5O7Hg0MABHSdKnk5SEZU6T/exec'; 
     const API_KEY = 'my-secret-password-1234';
 
     let isDataLoaded = false;

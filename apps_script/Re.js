@@ -309,19 +309,8 @@ function formatMatingSheet(ss, data, reservationMap) {
   matingCages.sort((a, b) => {
     let aCode = a.code || '';
     let bCode = b.code || '';
-    // 웹사이트 오른쪽 패널과 동일한 알파벳+숫자 분리 정렬
-    let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
-    let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
-    if (!aMatch || !bMatch) {
-      if (aCode.length !== bCode.length) return aCode.length - bCode.length;
-      if (aCode !== bCode) return aCode.localeCompare(bCode);
-    } else {
-      let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
-      if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
-      if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
-      let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
-      if (aNum !== bNum) return aNum - bNum;
-    }
+    if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+    if (aCode !== bCode) return aCode.localeCompare(bCode);
     
     let aSub = parseInt(a.subId) || 0;
     let bSub = parseInt(b.subId) || 0;
@@ -551,19 +540,8 @@ function formatBreedingSheet(ss, data, reservationMap) {
   breedingCages.sort((a, b) => {
     let aCode = a.code || '';
     let bCode = b.code || '';
-    // 웹사이트 오른쪽 패널과 동일한 알파벳+숫자 분리 정렬
-    let aMatch = aCode.match(/^([A-Za-z]+)(\d*)$/);
-    let bMatch = bCode.match(/^([A-Za-z]+)(\d*)$/);
-    if (!aMatch || !bMatch) {
-      if (aCode.length !== bCode.length) return aCode.length - bCode.length;
-      if (aCode !== bCode) return aCode.localeCompare(bCode);
-    } else {
-      let aAlpha = aMatch[1]; let bAlpha = bMatch[1];
-      if (aAlpha.length !== bAlpha.length) return aAlpha.length - bAlpha.length;
-      if (aAlpha !== bAlpha) return aAlpha.localeCompare(bAlpha);
-      let aNum = parseInt(aMatch[2])||0; let bNum = parseInt(bMatch[2])||0;
-      if (aNum !== bNum) return aNum - bNum;
-    }
+    if (aCode.length !== bCode.length) return aCode.length - bCode.length;
+    if (aCode !== bCode) return aCode.localeCompare(bCode);
     
     let aSub = parseInt(a.subId) || 0;
     let bSub = parseInt(b.subId) || 0;
