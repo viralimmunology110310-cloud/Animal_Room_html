@@ -518,24 +518,38 @@ function formatBreedingSheet(ss, data, reservationMap) {
   const breedingCages = data.cages.filter(c => c.type === 'breeding' || c.type === 'empty');
   
   // 구글 시트에서 strain map에는 있는데 실제로 인벤토리에서는 없는 경우 더미 추가
+  // Strain Map 시트를 직접 읽어서 마스터로 사용 (어떤 경로로 호출되든 안전)
+  const allStrainCodes = {};
   if (data.strainMap) {
-    const existingStrains = {};
-    breedingCages.forEach(c => { existingStrains[c.code] = true; });
-    Object.keys(data.strainMap).forEach(code => {
-      if (!existingStrains[code]) {
-        breedingCages.push({
-          isDummy: true,
-          type: 'breeding',
-          code: code,
-          subId: '',
-          bCount: 0,
-          notes: '',
-          gender: '',
-          bDob: ''
-        });
-      }
-    });
+    Object.keys(data.strainMap).forEach(code => { allStrainCodes[code] = true; });
   }
+  // Strain Map 시트에서도 직접 읽어서 합산
+  const smSheet = ss.getSheetByName('Strain Map');
+  if (smSheet) {
+    const smLastRow = smSheet.getLastRow();
+    if (smLastRow > 1) {
+      const smData = smSheet.getRange(2, 1, smLastRow - 1, 1).getValues();
+      smData.forEach(row => {
+        if (row[0]) allStrainCodes[String(row[0]).trim()] = true;
+      });
+    }
+  }
+  const existingStrains = {};
+  breedingCages.forEach(c => { existingStrains[c.code] = true; });
+  Object.keys(allStrainCodes).forEach(code => {
+    if (!existingStrains[code]) {
+      breedingCages.push({
+        isDummy: true,
+        type: 'breeding',
+        code: code,
+        subId: '',
+        bCount: 0,
+        notes: '',
+        gender: '',
+        bDob: ''
+      });
+    }
+  });
 
   breedingCages.sort((a, b) => {
     let aCode = a.code || '';
