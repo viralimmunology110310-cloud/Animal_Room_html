@@ -466,6 +466,13 @@ function formatBreedingSheet(ss, data, reservationMap) {
   }
   sheet.setFrozenRows(2);
 
+  // A1: 제목, A2: 남은 케이지 수
+  const totalCapacity = data.rackRows ? Object.values(data.rackRows).reduce((a, b) => a + b, 0) * 7 : 0;
+  const usedCages = Array.isArray(data.cages) ? data.cages.length : 0;
+  const remaining = totalCapacity - usedCages;
+  sheet.getRange('A1').setValue('remaining cage').setFontWeight('bold').setFontSize(10);
+  sheet.getRange('A2').setValue(remaining).setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+
   const now = new Date();
   const todayStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
   const mondayStr = getMondayStr(now);
