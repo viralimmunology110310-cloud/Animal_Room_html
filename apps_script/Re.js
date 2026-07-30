@@ -128,22 +128,41 @@ function updateStrainMapSheet(ss, data) {
     sheet = ss.insertSheet('Strain Map');
   }
   
-  // 항상 Firebase의 strainMap을 시트에 덮어쓰기 (Firebase가 마스터)
+  // 기존 Strain Map 시트 데이터를 먼저 읽어서 merge (0개 strain 유실 방지)
+  const mergedMap = {};
+  const existingLastRow = sheet.getLastRow();
+  if (existingLastRow > 1) {
+    const existingData = sheet.getRange(2, 1, existingLastRow - 1, 3).getValues();
+    existingData.forEach(row => {
+      if (row[0]) {
+        const code = String(row[0]).trim();
+        mergedMap[code] = {
+          name: row[1] ? String(row[1]).trim() : '',
+          g_done: String(row[2]).trim().toUpperCase() === 'O'
+        };
+      }
+    });
+  }
+  
+  // Firebase/웹사이트에서 온 strainMap으로 덮어쓰기 (신규 추가 + 기존 업데이트)
+  Object.keys(data.strainMap).forEach(k => {
+    const val = data.strainMap[k];
+    if (typeof val === 'string') mergedMap[k] = { name: val, g_done: false };
+    else mergedMap[k] = { name: val.name || '', g_done: !!val.g_done };
+  });
+
   sheet.clear();
   sheet.getRange('A1:C1').setValues([['기호(알파벳)', 'Strain 이름', 'G완료 여부(O/X)']]).setFontWeight('bold').setBackground('#f3f3f3');
   sheet.setColumnWidth(1, 100);
   sheet.setColumnWidth(2, 200);
   sheet.setColumnWidth(3, 120);
   
-  const keys = sortStrainKeys(Object.keys(data.strainMap));
-  const rows = keys.map(k => {
-    const val = data.strainMap[k];
-    let name = '', g_done = 'X';
-    if (typeof val === 'string') name = val;
-    else { name = val.name || ''; g_done = val.g_done ? 'O' : 'X'; }
-    return [k, name, g_done];
-  });
+  const keys = sortStrainKeys(Object.keys(mergedMap));
+  const rows = keys.map(k => [k, mergedMap[k].name, mergedMap[k].g_done ? 'O' : 'X']);
   if (rows.length > 0) sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+  
+  // data.strainMap도 merge 결과로 업데이트 (이후 formatBreedingSheet에서 사용)
+  data.strainMap = mergedMap;
 }
 
 function formatDateDots(dateStr) {
