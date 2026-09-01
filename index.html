@@ -2793,10 +2793,17 @@ document.addEventListener('pointerdown', (e) => {
 
     // ── Stats ─────────────────────────────────────
     function updateStatsBar() {
-        const total = Object.values(RACK_ROWS).reduce((a,b) => a+b, 0) * 7;
+        // 각 랙의 실제 용량 계산 (오버플로우 슬롯 포함)
+        let total = 0;
+        for (const [rName, rows] of Object.entries(RACK_ROWS)) {
+            const base = rows * 7;
+            const rackCages = cages.filter(c => c.rackId === rName);
+            const maxIdx = rackCages.reduce((max, c) => Math.max(max, c.cellIdx), base - 1);
+            total += maxIdx + 1;
+        }
         const rate  = total > 0 ? Math.round((cages.length / total) * 100) : 0;
         document.getElementById('occupancy-label').innerText = `${rate}% (${cages.length}/${total} 칸)`;
-        document.getElementById('occupancy-bar').style.width = `${rate}%`;
+        document.getElementById('occupancy-bar').style.width = `${Math.min(rate, 100)}%`;
         updateOverflowUI();
     }
     // ── Download Log ──────────────────────────────

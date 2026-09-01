@@ -485,8 +485,17 @@ function formatBreedingSheet(ss, data, reservationMap) {
   }
   sheet.setFrozenRows(2);
 
-  // A1: 제목, A2: 남은 케이지 수
-  const totalCapacity = data.rackRows ? Object.values(data.rackRows).reduce((a, b) => a + b, 0) * 7 : 0;
+  // A1: 제목, A2: 남은 케이지 수 (오버플로우 슬롯 포함)
+  let totalCapacity = 0;
+  if (data.rackRows) {
+    const cagesArr = Array.isArray(data.cages) ? data.cages : [];
+    Object.keys(data.rackRows).forEach(rName => {
+      const base = data.rackRows[rName] * 7;
+      const rackCages = cagesArr.filter(c => c.rackId === rName);
+      const maxIdx = rackCages.reduce((max, c) => Math.max(max, c.cellIdx || 0), base - 1);
+      totalCapacity += maxIdx + 1;
+    });
+  }
   const usedCages = Array.isArray(data.cages) ? data.cages.length : 0;
   const remaining = totalCapacity - usedCages;
   sheet.getRange('A1').setValue('remaining cage').setFontWeight('bold').setFontSize(10);
