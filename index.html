@@ -1412,6 +1412,55 @@
 
     let cages = [];
 
+    // ── 중첩 케이지 자동 감지 및 분리 (Auto-Heal) ────
+    function resolveDuplicateSlots(cagesArr, autoSync = false) {
+        if (!Array.isArray(cagesArr)) return cagesArr;
+        const occupied = {};
+        const relocated = [];
+        const cleanList = [];
+        
+        cagesArr.forEach(c => {
+            if (!c || !c.id) return;
+            const rack = c.rackId || 'A';
+            const cell = (c.cellIdx !== undefined && c.cellIdx !== null) ? parseInt(c.cellIdx) : 0;
+            const key = `${rack}_${cell}`;
+            if (!occupied[key]) {
+                occupied[key] = c;
+                cleanList.push(c);
+            } else {
+                relocated.push(c);
+            }
+        });
+
+        if (relocated.length > 0) {
+            console.warn(`[Auto-Heal] ${relocated.length}개의 중첩 케이지 발견! 빈 슬롯으로 자동 재배치합니다.`);
+            relocated.forEach(c => {
+                const rack = c.rackId || 'A';
+                let targetSlot = 0;
+                while (occupied[`${rack}_${targetSlot}`]) {
+                    targetSlot++;
+                }
+                c.cellIdx = targetSlot;
+                occupied[`${rack}_${targetSlot}`] = c;
+                cleanList.push(c);
+                console.warn(`[Auto-Heal] 케이지 ${c.id} (${c.code || ''}) -> Rack ${rack} / slot ${targetSlot} 로 재배치 완료`);
+            });
+
+            if (autoSync && isDataLoaded) {
+                let updates = {};
+                relocated.forEach(c => {
+                    updates['cages/' + c.id + '/cellIdx'] = c.cellIdx;
+                });
+                updates['lastUpdated'] = Date.now();
+                fbDataRef.update(updates).then(() => {
+                    console.log('[Auto-Heal] 중첩 해결 결과 Firebase 동기화 완료');
+                    debouncedPushToSheet();
+                }).catch(console.error);
+            }
+        }
+        return cleanList;
+    }
+
 
     let isBatchMode = false;
     let selectedIds = new Set();
@@ -1775,28 +1824,6 @@ document.addEventListener('pointerdown', (e) => {
                     if (!workCages.some(c => c.cellIdx === i)) emptyLeft.push(i);
                     if (emptyLeft.length >= occupants.length) break;
                 }
-                const delBtn = document.createElement('button');
-        delBtn.innerHTML = '🗑️ 일괄 삭제';
-        delBtn.onclick = () => {
-            if (!confirm(`선택한 ${selectedIds.size}개의 케이지를 정말 삭제하시겠습니까?`)) return;
-                    startTransaction();
-            let dc = 0;
-            selectedIds.forEach(cid => {
-                const cIdx = cages.findIndex(c => c.id === cid);
-                if (cIdx !== -1) {
-                    logAction('delete', `Cage ${cid} batch deleted`, `Rack ${cages[cIdx].rackId} — ${cages[cIdx].code}`);
-                    cages.splice(cIdx, 1);
-                    dc++;
-                }
-            });
-            if (dc > 0) {
-                batchMoveMode = false;
-                clearSelection();
-                let changes = commitTransaction();
-                renderMainBoard();
-                syncDeltaToFirebase(changes);
-            }
-        };
                 if (emptyLeft.length >= occupants.length) {
                     // 오른쪽에 있는 occupant부터 왼쪽 빈 슬롯으로 배정
                     occupants.sort((a, b) => b.cellIdx - a.cellIdx);
@@ -1808,9 +1835,8 @@ document.addEventListener('pointerdown', (e) => {
             // ── 오른쪽 밀기 (왼쪽 밀기 실패 시) ────────────────
             if (!shiftedLeft) {
                 let emptyRight = [];
-                for (let i = blockEnd + 1; i < capacity + 200; i++) {
+                for (let i = blockEnd + 1; emptyRight.length < occupants.length; i++) {
                     if (!workCages.some(c => c.cellIdx === i)) emptyRight.push(i);
-                    if (emptyRight.length >= occupants.length) break;
                 }
                 occupants.sort((a, b) => a.cellIdx - b.cellIdx);
                 occupants.forEach((occ, idx) => { occ.cellIdx = emptyRight[idx]; });
@@ -1943,6 +1969,7 @@ document.addEventListener('pointerdown', (e) => {
             }
         }
 
+        cages = resolveDuplicateSlots(cages, false);
         if (batchMoveMode) { batchMoveMode = false; clearSelection(); } else clearSelection();
         let changes = commitTransaction(); // Save local history for undo
         renderMainBoard();
@@ -2238,7 +2265,18 @@ document.addEventListener('pointerdown', (e) => {
             const rChar = String.fromCharCode(64 + Math.floor(i/7) + 1);
             slot.setAttribute('data-label', `${rChar}-${(i%7)+1}`);
             slot.dataset.idx = i;
-            slot.onclick = () => { if (isBatchMode) { if (selectedSlotIdxs.has(i)) selectedSlotIdxs.delete(i); else selectedSlotIdxs.add(i); updateSelectionUI(); } else if (!batchMoveMode) { clearSelection(); openModal(null, i); } };
+            slot.onclick = () => { 
+                if (isBatchMode) { 
+                    if (selectedSlotIdxs.has(i)) selectedSlotIdxs.delete(i); 
+                    else selectedSlotIdxs.add(i); 
+                    updateSelectionUI(); 
+                } else if (!batchMoveMode) { 
+                    clearSelection(); 
+                    const existing = cages.find(c => c.rackId === currentRack && c.cellIdx === i);
+                    if (existing) openModal(existing.id);
+                    else openModal(null, i); 
+                } 
+            };
             if (selectedSlotIdxs.has(i)) slot.classList.add('selected');
             frag.appendChild(slot);
         }
@@ -2491,7 +2529,15 @@ document.addEventListener('pointerdown', (e) => {
 
     function openModal(cageId, slotIdx = null) {
         const overflow = blockIfOverflow();
-        if (!cageId) { if (overflow) return; targetSlotIdxForCreate = slotIdx; }
+        if (!cageId && slotIdx !== null) {
+            const existing = cages.find(c => c.rackId === currentRack && c.cellIdx === slotIdx);
+            if (existing) {
+                cageId = existing.id;
+            } else {
+                if (overflow) return;
+                targetSlotIdxForCreate = slotIdx;
+            }
+        }
 
         if (cageId) {
             const c = cages.find(x => x.id === cageId);
@@ -2690,10 +2736,24 @@ document.addEventListener('pointerdown', (e) => {
         } else {
             const newId = 'c_' + Date.now();
             if (info.notes) info.noteUpdated = Date.now();
-            cages.push({ id: newId, rackId: currentRack, cellIdx: targetSlotIdxForCreate, ...info });
+            
+            let finalSlot = targetSlotIdxForCreate !== null ? targetSlotIdxForCreate : 0;
+            if (cages.some(c => c.rackId === currentRack && c.cellIdx === finalSlot)) {
+                let rackCages = cages.filter(c => c.rackId === currentRack);
+                let emptySlots = [];
+                for (let i = 0; i < (RACK_ROWS[currentRack] * 10); i++) {
+                    if (!rackCages.some(c => c.cellIdx === i)) emptySlots.push(i);
+                }
+                if (emptySlots.length > 0) {
+                    emptySlots.sort((a, b) => Math.abs(a - finalSlot) - Math.abs(b - finalSlot));
+                    finalSlot = emptySlots[0];
+                }
+            }
+
+            cages.push({ id: newId, rackId: currentRack, cellIdx: finalSlot, ...info });
             if (info.type !== 'sentinel') {
                 logAction('create',
-                    `New cage created in Rack ${currentRack} / slot ${targetSlotIdxForCreate}`,
+                    `New cage created in Rack ${currentRack} / slot ${finalSlot}`,
                     `${info.code}${info.subId} (${info.type})`
                 );
             }
@@ -2937,7 +2997,7 @@ document.addEventListener('pointerdown', (e) => {
                     cageMap.set(c.id, c);
                 }
             });
-            cages = Array.from(cageMap.values());
+            cages = resolveDuplicateSlots(Array.from(cageMap.values()), true);
             
             // 만약 Firebase 데이터가 기존 Array 포맷으로 남아있다면, 고유 ID 기반의 Dictionary로 영구 마이그레이션
             if (isLegacyArray) {
@@ -2995,7 +3055,7 @@ document.addEventListener('pointerdown', (e) => {
             });
             const data = await res.json();
             if (data && data.cages && data.cages.length > 0) {
-                cages = data.cages;
+                cages = resolveDuplicateSlots(data.cages, false);
                 if (data.rackRows) RACK_ROWS = data.rackRows;
                 if (data.dayMap) dayMap = data.dayMap;
                 if (data.wtRanges) {
